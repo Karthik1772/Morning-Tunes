@@ -20,6 +20,10 @@ Open http://localhost:3000.
 - The browser/device must remain powered on, awake, connected to the internet and connected to the speaker.
 - Vercel hosts the web app; it does not run a background alarm when the browser is closed.
 
+## Bluetooth speaker setup
+
+In Settings → Bluetooth speaker, enter an optional speaker name/MAC address, use **Open Bluetooth settings** to pair through Android or Windows, and press **Test speaker**. If you hear the tone on the intended speaker, confirm it in the dashboard. This is a manual playback confirmation, not automatic A2DP connection detection. Browsers cannot reliably inspect speaker connection status or connect to audio devices by MAC address.
+
 ## YouTube notes
 
 This app uses the official YouTube IFrame Player API. Playback is subject to YouTube availability, embedding restrictions, browser autoplay rules and account/region restrictions. Some videos do not allow embedding. Playlist-level controls are best-effort; individual video queues provide more deterministic stop/repeat/next-playlist behaviour.
