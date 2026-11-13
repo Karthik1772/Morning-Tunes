@@ -46,7 +46,7 @@ export function useSettings(armed: boolean) {
 
   const pull = useCallback(async () => {
     const p = passRef.current; if (!p || dead.current) return;
-    if (armedRef.current) void sendHeartbeat(p, true);
+    void sendHeartbeat(p, armedRef.current);
     const r = await fetchRemote(p);
     if (r.status !== "ok") { if (r.status === "unconfigured") dead.current = true; setSync(r.status); return; }
     setHeartbeat(r.heartbeat);
@@ -61,7 +61,7 @@ export function useSettings(armed: boolean) {
     dead.current = false; void pull();
     const t = setInterval(() => void pull(), POLL_MS);
     return () => clearInterval(t);
-  }, [ready, passcode, pull]);
+  }, [ready, passcode, armed, pull]);
 
   const patch = useCallback((p: Partial<Settings>) => {
     setSettings((s) => ({ ...s, ...p, updatedAt: Date.now() }));
