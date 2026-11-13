@@ -41,6 +41,7 @@ Alarm settings and the song queue then sync (last change wins, within about 30 s
 
 A sleeping laptop runs no code, so schedule a wake a couple of minutes before the alarm (examples for a 6:00 alarm). Leave the MorningTunes tab open and **armed** before you sleep the laptop, and have the speaker on and set to auto-connect (make it the default output device).
 
+
 **Windows** (PowerShell, as the user who owns the laptop):
 ```powershell
 $a = New-ScheduledTaskAction -Execute "cmd.exe" -Argument "/c exit"
