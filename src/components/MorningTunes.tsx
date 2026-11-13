@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { AlertTriangle, AudioLines, Bluetooth, ListMusic, Music2, Pause, Play, Settings2, ShieldCheck, Sun } from "lucide-react";
+import { AlertTriangle, Bluetooth, ListMusic, Music2, Pause, Play, Settings2, ShieldCheck, Sun } from "lucide-react";
 import { useSettings } from "@/hooks/useSettings";
 import { usePlayback } from "@/hooks/usePlayback";
 import { useAlarm } from "@/hooks/useAlarm";
@@ -31,8 +31,7 @@ export default function MorningTunes() {
     <main className="shell">
       <header className="flex flex-wrap items-center justify-between gap-4 mb-9">
         <div className="flex items-center gap-3">
-          <div className="h-11 w-11 rounded-2xl bg-amber-400/15 text-amber-300 flex items-center justify-center"><AudioLines size={23} /></div>
-          <div><div className="font-bold text-xl" style={{ fontFamily: "Manrope" }}>MorningTunes</div><div className="text-xs muted">A better way to wake up</div></div>
+          <img src="/logo.svg" alt="MorningTunes" className="h-12 w-auto" />
         </div>
         <div className="text-xs muted flex items-center gap-2"><span className={`h-2 w-2 rounded-full ${pb.ready ? "bg-emerald-400" : "bg-amber-400"}`} />{pb.ready ? "Player ready" : "Connecting player"} · {time}</div>
       </header>
@@ -92,7 +91,7 @@ export default function MorningTunes() {
         <div className="panel p-6">
           <div className="eyebrow mb-4">Alarm snapshot</div>
           <div className="space-y-4 text-sm">
-            <div><span className="muted">Music source</span><div className="font-semibold">{settings.musicSource === "playlist" ? "YouTube playlist" : `Song queue (${settings.songs.length})`}</div></div>
+            <div><span className="muted">Saved songs</span><div className="font-semibold">{settings.songs.length} individual video{settings.songs.length === 1 ? "" : "s"} in queue</div></div>
             <div><span className="muted">After last song</span><div className="font-semibold capitalize">{settings.endBehaviour}</div></div>
             <div><span className="muted">Shuffle</span><div className="font-semibold">{settings.shuffle ? "On" : "Off"}</div></div>
             <div><span className="muted">Volume</span><div className="font-semibold">{settings.volume}% · Fade {settings.fadeIn ? "on" : "off"}</div></div>
