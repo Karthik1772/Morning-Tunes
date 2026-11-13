@@ -1,13 +1,12 @@
-export type EndBehaviour = "stop" | "repeat" | "next";
+export type EndBehaviour = "stop" | "repeat";
 export type Schedule = "daily" | "weekdays" | "weekends" | "custom";
-export type MusicSource = "playlist" | "songs";
 export type Song = { id: string; kind: "youtube"; title: string; videoId: string; url: string };
 
 /** Synced between devices (laptop player + phone remote). */
 export type Settings = {
   alarmTime: string; schedule: Schedule; customDays: number[]; enabled: boolean;
   endBehaviour: EndBehaviour; shuffle: boolean; fadeIn: boolean; volume: number; timezone: string;
-  musicSource: MusicSource; playlistUrl: string; songs: Song[]; nextPlaylistUrl: string;
+  songs: Song[];
   updatedAt: number;
 };
 /** Stays on each device: which speaker that device is paired with. */
@@ -17,8 +16,7 @@ export type Heartbeat = { at: number; armed: boolean };
 export const DEFAULT_SETTINGS: Settings = {
   alarmTime: "06:00", schedule: "daily", customDays: [1, 2, 3, 4, 5, 6, 0], enabled: false,
   endBehaviour: "stop", shuffle: false, fadeIn: true, volume: 70, timezone: "Asia/Kolkata",
-  musicSource: "playlist", playlistUrl: "https://www.youtube.com/playlist?list=PLBo2BExIwYMtr4a-TVwyNvbb1lvbN70jd",
-  songs: [], nextPlaylistUrl: "", updatedAt: 0,
+  songs: [], updatedAt: 0,
 };
 export const DEFAULT_DEVICE: DeviceSettings = { speakerName: "", speakerMac: "", speakerVerified: false };
 
@@ -42,11 +40,11 @@ export function normalizeSong(v: unknown): Song | null {
   if (!id) return null;
   const title = str(v.title, "Song", 200) || "Song";
   const videoId = str(v.videoId, "", 20);
-  if (!/^[\w-]{11}$/.test(videoId)) return null; // v1 songs have no `kind`: treated as YouTube
+  if (!/^[\w-]{11}$/.test(videoId)) return null;
   return { id, kind: "youtube", title, videoId, url: `https://www.youtube.com/watch?v=${videoId}` };
 }
 
-/** Whitelists and validates every field. Used for localStorage, remote data and the API route. */
+/** Whitelists and validates every field. Legacy playlist settings are intentionally discarded. */
 export function normalizeSettings(raw: unknown): Settings {
   const r = isObj(raw) ? raw : {};
   const d = DEFAULT_SETTINGS;
@@ -61,15 +59,12 @@ export function normalizeSettings(raw: unknown): Settings {
     schedule: oneOf(r.schedule, ["daily", "weekdays", "weekends", "custom"] as const, d.schedule),
     customDays: days,
     enabled: bool(r.enabled, d.enabled),
-    endBehaviour: oneOf(r.endBehaviour, ["stop", "repeat", "next"] as const, d.endBehaviour),
+    endBehaviour: oneOf(r.endBehaviour, ["stop", "repeat"] as const, d.endBehaviour),
     shuffle: bool(r.shuffle, d.shuffle),
     fadeIn: bool(r.fadeIn, d.fadeIn),
     volume: vol,
     timezone: isValidTimezone(tz) ? tz : d.timezone,
-    musicSource: oneOf(r.musicSource, ["playlist", "songs"] as const, d.musicSource),
-    playlistUrl: str(r.playlistUrl, d.playlistUrl),
     songs,
-    nextPlaylistUrl: str(r.nextPlaylistUrl, ""),
     updatedAt: typeof r.updatedAt === "number" && Number.isFinite(r.updatedAt) && r.updatedAt >= 0 ? r.updatedAt : 0,
   };
 }
