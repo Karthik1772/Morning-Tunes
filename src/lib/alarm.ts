@@ -38,5 +38,6 @@ export function shouldFire(s: AlarmSettings, now: Date, lastFiredKey: string, gr
   const late = p.minutes - (Number(m[1]) * 60 + Number(m[2]));
   if (late < 0 || late > graceMinutes) return no;
   if (p.dateKey === lastFiredKey) return no;
-  return { fire: true, key: p.dateKey };
+  // Include the configured time so a changed alarm can fire later on the same day.
+  return { fire: true, key: `${p.dateKey}@${s.alarmTime}` };
 }
