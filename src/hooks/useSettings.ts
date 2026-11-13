@@ -2,8 +2,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { fetchRemote, pushRemote, sendHeartbeat } from "@/lib/sync";
 import {
-  DEFAULT_DEVICE, DEFAULT_SETTINGS, DEVICE_KEY, PASSCODE_KEY, STORAGE_KEY, normalizeDevice, normalizeSettings,
-  type DeviceSettings, type Heartbeat, type Settings,
+  DEFAULT_SETTINGS, PASSCODE_KEY, STORAGE_KEY, normalizeSettings,
+  type Heartbeat, type Settings,
 } from "@/lib/types";
 
 export type SyncState = "local" | "syncing" | "synced" | "badpass" | "unconfigured" | "error";
@@ -15,7 +15,6 @@ const write = (k: string, v: string) => { try { localStorage.setItem(k, v); } ca
 export function useSettings(armed: boolean) {
   const [ready, setReady] = useState(false);
   const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS);
-  const [device, setDevice] = useState<DeviceSettings>(DEFAULT_DEVICE);
   const [passcode, setPasscodeState] = useState("");
   const [sync, setSync] = useState<SyncState>("local");
   const [heartbeat, setHeartbeat] = useState<Heartbeat | null>(null);
@@ -29,12 +28,10 @@ export function useSettings(armed: boolean) {
   useEffect(() => {
     const raw = read(STORAGE_KEY);
     try { if (raw) setSettings(normalizeSettings(JSON.parse(raw))); } catch {}
-    try { const d = read(DEVICE_KEY); if (d) setDevice(normalizeDevice(JSON.parse(d))); } catch {}
     setPasscodeState(read(PASSCODE_KEY) ?? "");
     setReady(true);
   }, []);
   useEffect(() => { if (ready) write(STORAGE_KEY, JSON.stringify(settings)); }, [settings, ready]);
-  useEffect(() => { if (ready) write(DEVICE_KEY, JSON.stringify(device)); }, [device, ready]);
 
   const applyRemote = useCallback((s: Settings) => { setSettings(s); }, []);
 
@@ -71,9 +68,8 @@ export function useSettings(armed: boolean) {
     if (pushTimer.current) clearTimeout(pushTimer.current);
     pushTimer.current = setTimeout(() => void push(), 800);
   }, [push]);
-  const patchDevice = useCallback((p: Partial<DeviceSettings>) => setDevice((d) => ({ ...d, ...p })), []);
   const setPasscode = useCallback((p: string) => { write(PASSCODE_KEY, p); setPasscodeState(p); }, []);
   const reset = useCallback(() => patch({ ...DEFAULT_SETTINGS }), [patch]);
 
-  return { ready, settings, patch, device, patchDevice, passcode, setPasscode, sync, heartbeat, syncNow: pull, reset };
+  return { ready, settings, patch, passcode, setPasscode, sync, heartbeat, syncNow: pull, reset };
 }
