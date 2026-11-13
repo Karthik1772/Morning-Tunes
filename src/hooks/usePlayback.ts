@@ -127,7 +127,45 @@ export function usePlayback(settings: Settings, host: RefObject<HTMLDivElement |
   };
 
   self.current = { onYtState, onYtError, onBlocked };
+  const stopRef = useRef(stop); stopRef.current = stop;
   const startRef = useRef(start); startRef.current = start;
+  // Register with the browser/OS media session so playback is treated as active media
+  // and can be controlled from browser media controls while another window is focused.
+  useEffect(() => {
+    if (typeof navigator === "undefined" || !("mediaSession" in navigator)) return;
+    const mediaSession = navigator.mediaSession;
+
+    if (typeof MediaMetadata !== "undefined" && playingTitle !== "Nothing playing") {
+      mediaSession.metadata = new MediaMetadata({
+        title: playingTitle,
+        artist: "MorningTunes",
+        album: "Alarm queue",
+        artwork: [{ src: "/favicon.svg", sizes: "any", type: "image/svg+xml" }],
+      });
+    } else {
+      mediaSession.metadata = null;
+    }
+
+    mediaSession.playbackState =
+      status === "Playing" || status.startsWith("Starting") ? "playing" :
+      status === "Paused" ? "paused" : "none";
+
+    const setHandler = (action: MediaSessionAction, handler: MediaSessionActionHandler | null) => {
+      try { mediaSession.setActionHandler(action, handler); } catch {}
+    };
+    setHandler("play", () => api.play());
+    setHandler("pause", () => api.pause());
+    setHandler("stop", () => stopRef.current());
+
+    return () => {
+      setHandler("play", null);
+      setHandler("pause", null);
+      setHandler("stop", null);
+      mediaSession.metadata = null;
+      mediaSession.playbackState = "none";
+    };
+  }, [api, playingTitle, status]);
+
   useEffect(() => { if (loadError) setStatus(loadError); }, [loadError]);
   useEffect(() => { if (active.current && !fadeTimer.current) api.setVolume(settings.volume); }, [settings.volume, api]);
   useEffect(() => {
