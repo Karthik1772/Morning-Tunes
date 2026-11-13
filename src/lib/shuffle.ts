@@ -1,6 +1,9 @@
-/** Fisher-Yates (unbiased, unlike sort(() => Math.random() - .5)). */
-export function shuffled<T>(items: readonly T[]): T[] {
-  const a = [...items];
-  for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
-  return a;
+/** Returns a shuffled copy using the Fisher–Yates algorithm. */
+export function shuffleItems<T>(items: readonly T[]): T[] {
+  const shuffledItems = [...items];
+  for (let index = shuffledItems.length - 1; index > 0; index--) {
+    const randomIndex = Math.floor(Math.random() * (index + 1));
+    [shuffledItems[index], shuffledItems[randomIndex]] = [shuffledItems[randomIndex], shuffledItems[index]];
+  }
+  return shuffledItems;
 }
