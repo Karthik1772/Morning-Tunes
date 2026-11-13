@@ -214,6 +214,17 @@ export function useYouTubePlayer(
   const api = useMemo(
     () => ({
       loadVideo: (id: string) => player.current?.loadVideoById(id),
+      loadPlaylistOf: (id: string) =>
+        player.current?.loadPlaylist({
+          playlist: [id],
+          index: 0,
+          startSeconds: 0,
+        }),
+      setLoop: (on: boolean) => player.current?.setLoop(on),
+      mute: () => player.current?.mute(),
+      unMute: () => player.current?.unMute(),
+      seekTo: (seconds: number) => player.current?.seekTo(seconds, true),
+      state: (): number => player.current?.getPlayerState?.() ?? -1,
       setVolume: (volume: number) => player.current?.setVolume(volume),
       play: () => player.current?.playVideo(),
       pause: () => player.current?.pauseVideo(),

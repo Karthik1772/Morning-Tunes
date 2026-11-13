@@ -105,7 +105,9 @@ export default function MorningTunes() {
             className={`h-2 w-2 rounded-full ${pb.ready ? "bg-emerald-400" : pb.loadError ? "bg-rose-400" : "bg-amber-400"}`}
           />
           {pb.ready
-            ? "Player ready"
+            ? pb.primed
+              ? "Player ready · primed"
+              : "Player ready"
             : pb.loadError
               ? "Player error"
               : "Connecting player"}{" "}

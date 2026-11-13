@@ -5,6 +5,8 @@ import { shuffleItems } from "@/lib/shuffle";
 import { useYouTubePlayer } from "./useYouTubePlayer";
 
 const WATCHDOG_MS = 15000;
+const sigOf = (s: Settings) =>
+  `${s.shuffle ? 1 : 0}|${s.songs.map((x) => x.videoId).join(",")}`;
 
 /** Plays only the individual YouTube videos explicitly saved in the user's song queue. */
 export function usePlayback(
@@ -16,6 +18,17 @@ export function usePlayback(
   const [status, setStatus] = useState("Player is loading");
   const [playingTitle, setPlayingTitle] = useState("Nothing playing");
   const [fallback, setFallback] = useState(false);
+  const [startedAt, setStartedAt] = useState("");
+  const [unlocked, setUnlocked] = useState(false);
+  const [primed, setPrimed] = useState(false);
+  const [warmEpoch, setWarmEpoch] = useState(0);
+  // "Warm" player: the first song is already loaded and playing muted, so at alarm time we only
+  // unmute it. Chrome stops a hidden tab from starting a NEW YouTube video, but a video that
+  // is already playing keeps going.
+  const warming = useRef(false);
+  const warmReady = useRef(false);
+  const warmSig = useRef("");
+  const warmQueue = useRef<Song[]>([]);
   const queue = useRef<Song[]>([]);
   const index = useRef(0);
   const skips = useRef(0);
@@ -42,8 +55,31 @@ export function usePlayback(
     if (!ctx.current) ctx.current = new C();
     return ctx.current as AudioContext;
   };
+  const dropWarm = () => {
+    warming.current = false;
+    warmReady.current = false;
+    warmSig.current = "";
+    setPrimed(false);
+  };
+  const warmUp = () => {
+    const s = settingsRef.current;
+    if (!readyRef.current || active.current || !s.songs.length) return;
+    const sig = sigOf(s);
+    if (warmSig.current === sig && (warming.current || warmReady.current))
+      return;
+    const q = s.shuffle ? shuffleItems(s.songs) : [...s.songs];
+    warmSig.current = sig;
+    warmQueue.current = q;
+    warmReady.current = false;
+    warming.current = true;
+    setPrimed(false);
+    api.mute();
+    api.loadPlaylistOf(q[0].videoId);
+  };
   const unlock = async () => {
-    api.unlock();
+    setUnlocked(true);
+    // Priming would pause and unmute a warm player, so skip it while one is running.
+    if (!warming.current && !warmReady.current) api.unlock();
     const c = ensureCtx();
     try {
       await c?.resume();
@@ -118,7 +154,9 @@ export function usePlayback(
     clearWatchdog();
     watchdog.current = setTimeout(() => {
       if (active.current && isAlarm.current)
-        startBeep("Music did not start, so the fallback alarm is playing");
+        startBeep(
+          `Music did not start (player state ${api.state()}, tab ${document.visibilityState}), so the fallback alarm is playing`,
+        );
     }, WATCHDOG_MS);
   };
   const finish = (msg: string) => {
@@ -126,6 +164,8 @@ export function usePlayback(
     clearWatchdog();
     stopBeep();
     api.stop();
+    dropWarm();
+    setWarmEpoch((e) => e + 1);
     active.current = false;
     isAlarm.current = false;
     pendingStart.current = false;
@@ -137,6 +177,12 @@ export function usePlayback(
     clearWatchdog();
     skips.current = 0;
     if (beepTimer.current) stopBeep();
+    if (isAlarm.current)
+      setStartedAt(
+        new Date().toLocaleTimeString("en-IN", {
+          timeZone: settingsRef.current.timezone,
+        }),
+      );
     setStatus("Playing");
   };
   const playIndex = (i: number, first = false) => {
@@ -183,13 +229,29 @@ export function usePlayback(
       );
   };
   const onYtState = (state: number) => {
-    if (!active.current) return;
+    if (!active.current) {
+      if (warming.current && state === 1) {
+        warming.current = false;
+        warmReady.current = true;
+        api.setLoop(true);
+        setPrimed(true);
+      } else if (warmReady.current && state !== 1 && state !== 3) {
+        // The warm player stopped (ended, paused, cued). Re-warm when the tab is next visible.
+        warmReady.current = false;
+        warmSig.current = "";
+        setPrimed(false);
+      }
+      return;
+    }
     if (state === 1) onPlaying();
     else if (state === 2) setStatus("Paused");
     else if (state === 0) playIndex(index.current + 1);
   };
   const onYtError = (code: number) => {
-    if (!active.current) return;
+    if (!active.current) {
+      if (warming.current || warmReady.current) dropWarm();
+      return;
+    }
     setStatus(`Video unavailable (error ${code}), skipping`);
     skipFailed();
   };
@@ -217,6 +279,34 @@ export function usePlayback(
       setStatus("Waiting for the YouTube player to load");
       return;
     }
+    if (
+      warmReady.current &&
+      warmSig.current === sigOf(s) &&
+      api.state() === 1
+    ) {
+      // Fast path: the first song is already playing muted in the player.
+      queue.current = warmQueue.current;
+      const q = queue.current;
+      index.current = 0;
+      setPlayingTitle(q[0].title);
+      setStatus(`Starting 1 of ${q.length}`);
+      dropWarm();
+      api.setLoop(s.endBehaviour === "repeat" && q.length === 1);
+      api.seekTo(0);
+      rampVolume(targetVolume(s));
+      api.unMute();
+      onPlaying();
+      // Safety net: if it is not really playing a few seconds later, sound the fallback.
+      setTimeout(() => {
+        if (active.current && isAlarm.current && api.state() !== 1)
+          startBeep(
+            `Music stalled (player state ${api.state()}, tab ${document.visibilityState}), so the fallback alarm is playing`,
+          );
+      }, 6000);
+      return;
+    }
+    dropWarm();
+    api.unMute();
     queue.current = s.shuffle ? shuffleItems(s.songs) : [...s.songs];
     playIndex(0, true);
   };
@@ -278,6 +368,23 @@ export function usePlayback(
   useEffect(() => {
     if (loadError) setStatus(loadError);
   }, [loadError]);
+  // Keep the first song loaded and muted while the alarm is on, so it can start in a hidden tab.
+  useEffect(() => {
+    if (!ready || !unlocked || !settings.enabled) return;
+    const warm = () => {
+      if (document.visibilityState === "visible") warmUp();
+    };
+    warm();
+    document.addEventListener("visibilitychange", warm);
+    return () => document.removeEventListener("visibilitychange", warm);
+  }, [ready, unlocked, settings.enabled, sigOf(settings), warmEpoch]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (settings.enabled || active.current) return;
+    if (warming.current || warmReady.current) {
+      api.stop();
+      dropWarm();
+    }
+  }, [settings.enabled]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (active.current && !fadeTimer.current)
       api.setVolume(targetVolume(settings));
@@ -302,6 +409,8 @@ export function usePlayback(
     status,
     playingTitle,
     fallback,
+    startedAt,
+    primed,
     start,
     stop,
     unlock,
