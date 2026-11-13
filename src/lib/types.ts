@@ -1,16 +1,13 @@
 export type EndBehaviour = "stop" | "repeat" | "next";
 export type Schedule = "daily" | "weekdays" | "weekends" | "custom";
 export type MusicSource = "playlist" | "songs";
-/** Where the alarm plays: this browser tab, or the Windows agent (wakes the laptop, no tab needed). */
-export type PlayOn = "browser" | "agent";
-export type Song = { id: string; kind: "youtube" | "local"; title: string; videoId?: string; url?: string };
+export type Song = { id: string; kind: "youtube"; title: string; videoId: string; url: string };
 
 /** Synced between devices (laptop player + phone remote). */
 export type Settings = {
   alarmTime: string; schedule: Schedule; customDays: number[]; enabled: boolean;
   endBehaviour: EndBehaviour; shuffle: boolean; fadeIn: boolean; volume: number; timezone: string;
   musicSource: MusicSource; playlistUrl: string; songs: Song[]; nextPlaylistUrl: string;
-  playOn: PlayOn;
   updatedAt: number;
 };
 /** Stays on each device: which speaker that device is paired with. */
@@ -46,7 +43,6 @@ export function normalizeSong(v: unknown): Song | null {
   const id = str(v.id, "", 64);
   if (!id) return null;
   const title = str(v.title, "Song", 200) || "Song";
-  if (v.kind === "local") return { id, kind: "local", title };
   const videoId = str(v.videoId, "", 20);
   if (!/^[\w-]{11}$/.test(videoId)) return null; // v1 songs have no `kind`: treated as YouTube
   return { id, kind: "youtube", title, videoId, url: `https://www.youtube.com/watch?v=${videoId}` };
@@ -76,7 +72,6 @@ export function normalizeSettings(raw: unknown): Settings {
     playlistUrl: str(r.playlistUrl, d.playlistUrl),
     songs,
     nextPlaylistUrl: str(r.nextPlaylistUrl, ""),
-    playOn: oneOf(r.playOn, ["browser", "agent"] as const, d.playOn),
     updatedAt: typeof r.updatedAt === "number" && Number.isFinite(r.updatedAt) && r.updatedAt >= 0 ? r.updatedAt : 0,
   };
 }
