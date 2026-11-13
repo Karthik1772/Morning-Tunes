@@ -1,0 +1,3 @@
+export function getPlaylistId(url:string):string|null { try { return new URL(url).searchParams.get("list"); } catch { return null; } }
+export function getVideoId(url:string):string|null { try { const u=new URL(url); if(u.hostname.includes("youtu.be")) return u.pathname.slice(1).split("/")[0]||null; if(u.searchParams.get("v")) return u.searchParams.get("v"); const p=u.pathname.split("/").filter(Boolean); const i=p.findIndex(x=>["embed","shorts","live"].includes(x)); return i>=0?p[i+1]||null:null; } catch { return null; } }
+export function youtubeUrl(id:string):string { return `https://www.youtube.com/watch?v=${id}`; }
