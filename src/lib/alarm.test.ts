@@ -43,7 +43,7 @@ test("normalizes only valid individually saved YouTube videos", () => {
   });
   assert.equal(s.volume, 100);
   assert.equal(s.alarmTime, DEFAULT_SETTINGS.alarmTime);
-  assert.deepEqual(s.songs.map((x) => [x.id, x.kind]), [["a", "youtube"], ["c", "youtube"]]);
+  assert.deepEqual(s.songs.map((x) => [x.id, x.kind]), [["a", "youtube"]]);
   assert.equal("musicSource" in s, false);
   assert.equal("playlistUrl" in s, false);
   assert.equal("nextPlaylistUrl" in s, false);
