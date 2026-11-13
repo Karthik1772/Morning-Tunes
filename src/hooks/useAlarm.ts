@@ -18,6 +18,7 @@ const WORKER_SRC = `
  * Chrome) and can be frozen. To keep the alarm on time we:
  *  - tick from a Web Worker, whose timers are not throttled like the page's,
  *  - hold a Web Lock while armed, which stops Chrome from freezing the tab,
+ *  - keep the tab audible with an inaudible tone, which exempts it from throttling,
  *  - re-check on every wake-up signal (visible, focus, resume, pageshow, online).
  * A closed browser, discarded tab, or sleeping device still cannot ring.
  */
@@ -117,6 +118,45 @@ export function useAlarm(
     return () => {
       cancelled = true;
       release?.();
+    };
+  }, [settingsLoaded, settings.enabled, armed]);
+
+  // Keep the tab "audible". Chrome throttles, freezes and discards hidden tabs, and that also
+  // slows the embedded YouTube player, so the song can stall until you come back to the tab.
+  // A tab that is playing audio is exempt. This tone is about -56 dBFS: far below what you can
+  // hear, but above Chrome's silence threshold, so the tab counts as playing audio.
+  useEffect(() => {
+    if (!settingsLoaded || !settings.enabled || !armed) return;
+    const C = window.AudioContext || (window as any).webkitAudioContext;
+    if (!C) return;
+    let ctx: AudioContext;
+    try {
+      ctx = new C();
+    } catch {
+      return;
+    }
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.frequency.value = 50;
+    gain.gain.value = 0.0015;
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start();
+    const resume = () => {
+      if (ctx.state !== "running") void ctx.resume().catch(() => {});
+    };
+    resume();
+    ctx.addEventListener("statechange", resume);
+    document.addEventListener("visibilitychange", resume);
+    window.addEventListener("pointerdown", resume);
+    return () => {
+      ctx.removeEventListener("statechange", resume);
+      document.removeEventListener("visibilitychange", resume);
+      window.removeEventListener("pointerdown", resume);
+      try {
+        osc.stop();
+      } catch {}
+      void ctx.close().catch(() => {});
     };
   }, [settingsLoaded, settings.enabled, armed]);
 
