@@ -16,6 +16,11 @@ test("fires only once per day", () => {
   assert.equal(shouldFire(base, at("00:31"), first.key).fire, false);
   assert.equal(shouldFire(base, at("00:30", "2026-11-15"), first.key).fire, true);
 });
+test("allows a changed alarm time to fire later on the same day", () => {
+  const first = shouldFire(base, at("00:30"), "");
+  const rescheduled = shouldFire({ ...base, alarmTime: "06:10" }, at("00:40"), first.key);
+  assert.equal(rescheduled.fire, true);
+});
 test("respects enabled flag", () => assert.equal(shouldFire({ ...base, enabled: false }, at("00:30"), "").fire, false));
 test("weekday schedule skips Saturday, weekend schedule fires", () => {
   assert.equal(shouldFire({ ...base, schedule: "weekdays" }, at("00:30"), "").fire, false);
