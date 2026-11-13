@@ -24,7 +24,7 @@ export function usePlayback(settings: Settings, host: RefObject<HTMLDivElement |
   const beepTimer = useRef<ReturnType<typeof setInterval> | null>(null);
   const self = useRef<Record<string, (...a: any[]) => void>>({});
 
-  const { ready, api } = useYouTubePlayer(host, {
+  const { ready, loadError, api } = useYouTubePlayer(host, {
     onState: (s) => self.current.onYtState(s),
     onError: (c) => self.current.onYtError(c),
     onBlocked: () => self.current.onBlocked(),
@@ -127,6 +127,7 @@ export function usePlayback(settings: Settings, host: RefObject<HTMLDivElement |
 
   self.current = { onYtState, onYtError, onBlocked };
   const startRef = useRef(start); startRef.current = start;
+  useEffect(() => { if (loadError) setStatus(loadError); }, [loadError]);
   useEffect(() => {
     if (ready) {
       setStatus((p) => p === "Player is loading" ? "Player ready" : p);
