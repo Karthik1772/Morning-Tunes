@@ -13,6 +13,7 @@ type Props = {
   sync: SyncState;
   syncNow: () => Promise<void>;
   reset: () => void;
+  onToggleEnabled: (enabled: boolean) => void;
 };
 
 const SYNC_TEXT: Record<SyncState, string> = {
@@ -24,7 +25,7 @@ const SYNC_TEXT: Record<SyncState, string> = {
   error: "Can't reach the server right now. It will retry automatically.",
 };
 
-export default function SettingsTab({ settings, patch, onVolumeChange, passcode, setPasscode, sync, syncNow, reset }: Props) {
+export default function SettingsTab({ settings, patch, onVolumeChange, passcode, setPasscode, sync, syncNow, reset, onToggleEnabled }: Props) {
   const [passDraft, setPassDraft] = useState(passcode);
 
   const testAudioOutput = async () => {
@@ -63,7 +64,7 @@ export default function SettingsTab({ settings, patch, onVolumeChange, passcode,
         </div></div>}
         <div className="flex justify-between items-center">
           <div><div className="text-sm font-semibold">Enable alarm</div><div className="text-xs muted">Keep this page open and the device awake</div></div>
-          <input aria-label="Enable alarm" className="switch" type="checkbox" checked={settings.enabled} onChange={(e) => patch({ enabled: e.target.checked })} />
+          <input aria-label="Enable alarm" className="switch" type="checkbox" checked={settings.enabled} onChange={(e) => onToggleEnabled(e.target.checked)} />
         </div>
         <div className="rounded-xl bg-amber-400/10 border border-amber-400/20 p-3 text-xs text-amber-100 flex gap-2">
           <CircleHelp size={16} className="shrink-0" />
