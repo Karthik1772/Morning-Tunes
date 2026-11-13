@@ -162,6 +162,8 @@ export function useYouTubePlayer(host: RefObject<HTMLDivElement | null>, handler
   const api = useMemo(() => ({
     loadVideo: (id: string) => player.current?.loadVideoById(id),
     setVolume: (volume: number) => player.current?.setVolume(volume),
+    play: () => player.current?.playVideo(),
+    pause: () => player.current?.pauseVideo(),
     stop: () => player.current?.stopVideo(),
     unlock: () => {
       const currentPlayer = player.current;
