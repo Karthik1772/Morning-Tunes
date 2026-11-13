@@ -163,6 +163,16 @@ export function useYouTubePlayer(host: RefObject<HTMLDivElement | null>, handler
     loadVideo: (id: string) => player.current?.loadVideoById(id),
     setVolume: (volume: number) => player.current?.setVolume(volume),
     stop: () => player.current?.stopVideo(),
+    unlock: () => {
+      const currentPlayer = player.current;
+      if (!readyRef.current || !currentPlayer) return;
+      // Prime YouTube playback during the user click that enables the alarm.
+      currentPlayer.mute();
+      currentPlayer.setVolume(0);
+      currentPlayer.playVideo();
+      currentPlayer.pauseVideo();
+      currentPlayer.unMute();
+    },
   }), []);
 
   return { ready, loadError, api };
