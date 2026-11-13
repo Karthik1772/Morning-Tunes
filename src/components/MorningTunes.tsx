@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { AlertTriangle, Bluetooth, ListMusic, Music2, Pause, Play, Settings2, ShieldCheck, Sun } from "lucide-react";
+import { Bluetooth, ListMusic, Music2, Pause, Play, Settings2, Sun } from "lucide-react";
 import { useSettings } from "@/hooks/useSettings";
 import { usePlayback } from "@/hooks/usePlayback";
 import { useAlarm } from "@/hooks/useAlarm";
@@ -11,7 +11,7 @@ const ago = (ms: number) => { const s = Math.max(0, Math.round(ms / 1000)); retu
 
 export default function MorningTunes() {
   const [armed, setArmed] = useState(false); // this tab has had a click, so the browser allows sound
-  const { ready, settings, patch, device, patchDevice, passcode, setPasscode, sync, heartbeat, syncNow, reset } = useSettings(armed);
+  const { ready, settings, patch, passcode, setPasscode, sync, heartbeat, syncNow, reset } = useSettings(armed);
   const [tab, setTab] = useState<"library" | "settings">("library");
   const [now, setNow] = useState(new Date());
   const playerHost = useRef<HTMLDivElement>(null); // always mounted, so switching tabs never destroys the player
@@ -36,12 +36,7 @@ export default function MorningTunes() {
         <div className="text-xs muted flex items-center gap-2" title={pb.loadError || (pb.ready ? "YouTube player initialized" : "Waiting for YouTube")}><span className={`h-2 w-2 rounded-full ${pb.ready ? "bg-emerald-400" : pb.loadError ? "bg-rose-400" : "bg-amber-400"}`} />{pb.ready ? "Player ready" : pb.loadError ? "Player error" : "Connecting player"} · {time}</div>
       </header>
 
-      {settings.enabled && !armed && (
-        <div className="mb-5 rounded-2xl border border-amber-400/30 bg-amber-400/10 p-4 flex flex-wrap items-center justify-between gap-3" role="alert">
-          <div className="flex items-center gap-3 text-sm text-amber-100"><AlertTriangle size={18} className="shrink-0" /> The alarm is on, but this tab hasn&apos;t been armed. Browsers block sound until you click once on the page.</div>
-          <button className="btn btn-primary" onClick={() => void arm()}><ShieldCheck size={16} /> Arm this device</button>
-        </div>
-      )}
+
 
       <section className="grid lg:grid-cols-[1.35fr_.85fr] gap-5 mb-6">
         <div className="rounded-3xl p-8 relative overflow-hidden" style={{ background: "linear-gradient(120deg,#25364a,#172438 65%,#382c24)" }}>
@@ -65,7 +60,7 @@ export default function MorningTunes() {
           <div className="mt-6 pt-5 border-t border-slate-700 space-y-3">
             <div className="flex items-center justify-between">
               <div><div className="text-sm font-semibold">Alarm enabled</div>
-                <div className="text-xs muted">{!settings.enabled ? "Turn on to schedule playback" : armed ? "This browser is armed" : "Not armed yet"}</div></div>
+                <div className="text-xs muted">{!settings.enabled ? "Turn on to schedule playback" : armed ? "Ready for scheduled playback" : "Click Test playback once after opening"}</div></div>
               <input aria-label="Enable alarm" className="switch" type="checkbox" checked={settings.enabled} onChange={(e) => toggleEnabled(e.target.checked)} />
             </div>
             {passcode && !armed && (
@@ -105,7 +100,7 @@ export default function MorningTunes() {
         ))}
       </nav>
       {tab === "library" && <LibraryTab settings={settings} patch={patch} />}
-      {tab === "settings" && <SettingsTab settings={settings} patch={patch} device={device} patchDevice={patchDevice} passcode={passcode} setPasscode={setPasscode} sync={sync} syncNow={syncNow} reset={reset} onToggleEnabled={toggleEnabled} />}
+      {tab === "settings" && <SettingsTab settings={settings} patch={patch} onVolumeChange={pb.setVolume} passcode={passcode} setPasscode={setPasscode} sync={sync} syncNow={syncNow} reset={reset} onToggleEnabled={toggleEnabled} />}
 
       <div className="mt-7 text-xs muted flex flex-wrap justify-between gap-3">
         <span>MorningTunes · Settings save automatically in this browser{passcode ? " and sync across your devices" : ""}</span>
