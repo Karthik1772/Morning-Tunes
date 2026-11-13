@@ -261,7 +261,26 @@ function Connect-Speaker($Cfg, [string]$Mpv) {
     return $null
 }
 
-function Quote-Arg([string]$s) { '"' + $s + '"' }
+function Quote-Arg([string]$s) {
+    if ($null -eq $s) { return '""' }
+    $sb = New-Object System.Text.StringBuilder
+    [void]$sb.Append('"')
+    $slashes = 0
+    foreach ($ch in $s.ToCharArray()) {
+        if ($ch -eq [char]92) { $slashes++; continue }
+        if ($ch -eq [char]34) {
+            [void]$sb.Append(('\' * (2 * $slashes + 1)))
+            [void]$sb.Append('"')
+            $slashes = 0
+            continue
+        }
+        if ($slashes -gt 0) { [void]$sb.Append(('\' * $slashes)); $slashes = 0 }
+        [void]$sb.Append($ch)
+    }
+    if ($slashes -gt 0) { [void]$sb.Append(('\' * (2 * $slashes))) }
+    [void]$sb.Append('"')
+    $sb.ToString()
+}
 
 # Sets mpv's volume over its IPC pipe (used for the one-time fade-in). Returns $true on success.
 function Set-MpvVolume([string]$Pipe, [int]$Value) {
@@ -281,7 +300,8 @@ function Set-MpvVolume([string]$Pipe, [int]$Value) {
 function Invoke-Mpv($Cfg, [string]$Mpv, [string]$Ytdlp, [string[]]$Targets, [bool]$Shuffle, [bool]$Loop, [bool]$Fade, [int]$Volume, $Device, [datetime]$Deadline) {
     $pipe = "morningtunes-$PID"
     $startVol = if ($Fade) { 0 } else { $Volume }
-    $a = @('--no-video', '--no-terminal', '--really-quiet', "--volume=$startVol", "--input-ipc-server=\\.\pipe\$pipe", '--ytdl-format=bestaudio/best')
+    $mpvLog = Join-Path $AgentDir 'mpv-last.log'
+    $a = @('--no-video', '--no-terminal', '--really-quiet', "--volume=$startVol", "--input-ipc-server=\\.\pipe\$pipe", "--log-file=$mpvLog", '--ytdl-format=bestaudio/best')
     if ($Device)  { $a += "--audio-device=$($Device.Id)" }
     if ($Shuffle) { $a += '--shuffle' }
     if ($Loop)    { $a += '--loop-playlist=inf' }
@@ -289,7 +309,8 @@ function Invoke-Mpv($Cfg, [string]$Mpv, [string]$Ytdlp, [string[]]$Targets, [boo
     $a += '--'
     foreach ($t in $Targets) { $a += (Quote-Arg $t) }
 
-    $proc = Start-Process -FilePath $Mpv -ArgumentList $a -PassThru -WindowStyle Hidden
+    Write-Log ("Launching mpv with {0} target(s); diagnostic log: {1}" -f $Targets.Count, $mpvLog)
+    $proc = Start-Process -FilePath $Mpv -ArgumentList ($a -join ' ') -PassThru -WindowStyle Hidden
     $t0 = Get-Date; $ramp = 0; $rampStarted = $false; $lastStep = Get-Date; $fadeFailed = $false
     while (-not $proc.HasExited) {
         if ((Get-Date) -ge $Deadline) { Write-Log 'Time limit reached - stopping.'; Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue; break }
