@@ -28,7 +28,7 @@ try {
             $trigger  = New-ScheduledTaskTrigger -Weekly -DaysOfWeek $plan.Days -At ([datetime]::Today.Add($plan.Time))
             $limit    = if ([int]$cfg.maxPlayMinutes -gt 0) { [int]$cfg.maxPlayMinutes + 20 } else { 600 }
             $settings = New-ScheduledTaskSettingsSet -WakeToRun -StartWhenAvailable -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries `
-                          -ExecutionTimeLimit (New-TimeSpan -Minutes $limit)
+                          -ExecutionTimeLimit (New-TimeSpan -Minutes $limit) -MultipleInstances IgnoreNew
             $princ    = New-ScheduledTaskPrincipal -UserId "$env:USERDOMAIN\$env:USERNAME" -LogonType Interactive -RunLevel Highest
             Register-ScheduledTask -TaskName $AlarmTaskName -Action $action -Trigger $trigger -Settings $settings -Principal $princ -Force | Out-Null
             $state.signature = $sig
