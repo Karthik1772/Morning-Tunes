@@ -51,10 +51,7 @@ export async function PUT(req: NextRequest) {
   } catch { return NextResponse.json({ error: "storage_error" }, { status: 502 }); }
 }
 
-/**
- * Check-ins. Browser tab: `{ armed }`. Windows agent: `{ source: "agent", state, detail }`.
- * They use separate keys so one never overwrites the other.
- */
+/** Browser-tab check-in used by cross-device status. */
 export async function POST(req: NextRequest) {
   const denied = guard(req); if (denied) return denied;
   let body: { armed?: unknown } = {};
