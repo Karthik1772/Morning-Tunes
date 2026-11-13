@@ -67,6 +67,10 @@ Wake behaviour varies by machine. **Test the night before**, in the same positio
 
 A web page cannot connect to a speaker by MAC address or read its connection state. The OS reconnects to the paired speaker; the MAC field is only a note for yourself, and **Test speaker** plays a tone through the current output for you to confirm by ear.
 
+## Bluetooth speaker setup
+
+In Settings → Bluetooth speaker, enter an optional speaker name/MAC address, use **Open Bluetooth settings** to pair through Android or Windows, and press **Test speaker**. If you hear the tone on the intended speaker, confirm it in the dashboard. This is a manual playback confirmation, not automatic A2DP connection detection. Browsers cannot reliably inspect speaker connection status or connect to audio devices by MAC address.
+
 ## YouTube notes
 
 Uses the official YouTube IFrame Player API, so playback is subject to embedding restrictions, region/account limits and the browser's autoplay rules.
