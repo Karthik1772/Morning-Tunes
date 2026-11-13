@@ -9,8 +9,6 @@ export type Settings = {
   songs: Song[];
   updatedAt: number;
 };
-/** Stays on each device: which speaker that device is paired with. */
-export type DeviceSettings = { speakerName: string; speakerMac: string; speakerVerified: boolean };
 export type Heartbeat = { at: number; armed: boolean };
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -18,10 +16,8 @@ export const DEFAULT_SETTINGS: Settings = {
   endBehaviour: "stop", shuffle: false, fadeIn: true, volume: 70, timezone: "Asia/Kolkata",
   songs: [], updatedAt: 0,
 };
-export const DEFAULT_DEVICE: DeviceSettings = { speakerName: "", speakerMac: "", speakerVerified: false };
 
 export const STORAGE_KEY = "morningtunes.settings.v1";
-export const DEVICE_KEY = "morningtunes.device.v1";
 export const PASSCODE_KEY = "morningtunes.passcode";
 export const LAST_FIRED_KEY = "morningtunes.lastFired";
 
@@ -69,7 +65,3 @@ export function normalizeSettings(raw: unknown): Settings {
   };
 }
 
-export function normalizeDevice(raw: unknown): DeviceSettings {
-  const r = isObj(raw) ? raw : {};
-  return { speakerName: str(r.speakerName, "", 100), speakerMac: str(r.speakerMac, "", 40), speakerVerified: bool(r.speakerVerified, false) };
-}
