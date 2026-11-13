@@ -4,95 +4,154 @@ import { RefObject, useEffect, useMemo, useRef, useState } from "react";
 declare global { interface Window { YT?: any; onYouTubeIframeAPIReady?: () => void } }
 export type YTHandlers = { onState: (state: number) => void; onError: (code: number) => void; onBlocked: () => void };
 
+const API_URL = "https://www.youtube.com/iframe_api";
+
 export function useYouTubePlayer(host: RefObject<HTMLDivElement | null>, handlers: YTHandlers) {
   const player = useRef<any>(null);
+  const readyRef = useRef(false);
   const [ready, setReady] = useState(false);
   const [loadError, setLoadError] = useState("");
-  const h = useRef(handlers); h.current = handlers;
+  const h = useRef(handlers);
+  h.current = handlers;
 
   useEffect(() => {
     const container = host.current;
-    if (!container) { setLoadError("Player container was not mounted. Refresh the page."); return; }
-    let cancelled = false;
-    let poll: ReturnType<typeof setInterval> | null = null;
-    let readyTimeout: ReturnType<typeof setTimeout> | null = null;
-    let apiTimeout: ReturnType<typeof setTimeout> | null = null;
+    if (!container) {
+      setLoadError("The video player area could not be mounted. Refresh the page.");
+      return;
+    }
 
-    const cleanupTimers = () => {
-      if (poll) { clearInterval(poll); poll = null; }
-      if (readyTimeout) { clearTimeout(readyTimeout); readyTimeout = null; }
-      if (apiTimeout) { clearTimeout(apiTimeout); apiTimeout = null; }
+    let cancelled = false;
+    let poll: ReturnType<typeof setInterval> | undefined;
+    let readyTimeout: ReturnType<typeof setTimeout> | undefined;
+    let apiTimeout: ReturnType<typeof setTimeout> | undefined;
+    let script: HTMLScriptElement | null = null;
+    let previousReadyCallback: (() => void) | undefined;
+
+    const clearTimers = () => {
+      if (poll) clearInterval(poll);
+      if (readyTimeout) clearTimeout(readyTimeout);
+      if (apiTimeout) clearTimeout(apiTimeout);
+      poll = undefined;
+      readyTimeout = undefined;
+      apiTimeout = undefined;
+    };
+
+    const fail = (message: string) => {
+      if (cancelled) return;
+      clearTimers();
+      setLoadError(message);
     };
 
     const init = () => {
       if (cancelled || player.current || !window.YT?.Player) return;
-      if (poll) { clearInterval(poll); poll = null; }
-      if (apiTimeout) { clearTimeout(apiTimeout); apiTimeout = null; }
+      clearTimers();
       setLoadError("");
-      const el = document.createElement("div");
-      container.appendChild(el);
+
+      const mount = document.createElement("div");
+      mount.className = "youtube-player-mount";
+      container.replaceChildren(mount);
+
       try {
-        player.current = new window.YT.Player(el, {
-          height: "180", width: "320",
-          playerVars: { playsinline: 1, controls: 1, rel: 0, origin: window.location.origin },
+        player.current = new window.YT.Player(mount, {
+          width: "640",
+          height: "360",
+          playerVars: {
+            autoplay: 0,
+            playsinline: 1,
+            controls: 1,
+            rel: 0,
+            enablejsapi: 1,
+            origin: window.location.origin,
+            widget_referrer: window.location.href,
+          },
           events: {
-            onReady: () => {
+            onReady: (event: any) => {
               if (cancelled) return;
-              cleanupTimers();
+              readyRef.current = true;
+              clearTimers();
+              const iframe = event?.target?.getIframe?.();
+              if (iframe) {
+                iframe.title = "MorningTunes YouTube music player";
+                iframe.setAttribute("allow", "autoplay; encrypted-media; picture-in-picture");
+                iframe.setAttribute("referrerpolicy", "strict-origin-when-cross-origin");
+                iframe.classList.add("youtube-player-iframe");
+              }
               setLoadError("");
               setReady(true);
             },
-            onStateChange: (e: any) => h.current.onState(e.data),
-            onError: (e: any) => {
-              if (!ready) setLoadError(`YouTube player initialization error (${e.data}).`);
-              else h.current.onError(e.data);
+            onStateChange: (event: any) => h.current.onState(event.data),
+            onError: (event: any) => {
+              const code = Number(event?.data);
+              if (!readyRef.current) {
+                const message = code === 153
+                  ? "YouTube blocked this embed because browser identification/referrer information was unavailable (error 153). Allow referrers for this site and disable privacy extensions for testing."
+                  : `YouTube could not initialize the embedded player (error ${code}). Check whether embedding is allowed and youtube.com is accessible.`;
+                fail(message);
+              } else {
+                h.current.onError(code);
+              }
             },
             onAutoplayBlocked: () => h.current.onBlocked(),
           },
         });
         readyTimeout = setTimeout(() => {
-          if (!cancelled && !ready) setLoadError("YouTube's API loaded, but its embedded player did not become ready. Check browser extensions, network restrictions, and whether youtube.com is accessible.");
-        }, 12000);
-      } catch (err) {
-        setLoadError("The YouTube player could not initialize. Check network access or browser extensions.");
+          if (!cancelled && !readyRef.current) {
+            fail("YouTube's API loaded, but its video frame never became ready. Check browser extensions, network restrictions, and youtube.com access.");
+          }
+        }, 15000);
+      } catch {
+        fail("The YouTube player could not initialize. Check network access and browser extensions.");
       }
     };
+
+    readyRef.current = false;
+    setReady(false);
+    container.replaceChildren();
 
     if (window.YT?.Player) {
       init();
     } else {
-      const previous = window.onYouTubeIframeAPIReady;
-      window.onYouTubeIframeAPIReady = () => { previous?.(); init(); };
+      previousReadyCallback = window.onYouTubeIframeAPIReady;
+      window.onYouTubeIframeAPIReady = () => {
+        try { previousReadyCallback?.(); } finally { init(); }
+      };
 
-      let script = document.querySelector<HTMLScriptElement>('script[src="https://www.youtube.com/iframe_api"]');
+      script = document.querySelector<HTMLScriptElement>(`script[src="${API_URL}"]`);
       if (!script) {
         script = document.createElement("script");
-        script.src = "https://www.youtube.com/iframe_api";
+        script.src = API_URL;
         script.async = true;
-        script.onerror = () => {
-          if (!cancelled) {
-            cleanupTimers();
-            setLoadError("The YouTube API script was blocked or could not be downloaded. Check your internet connection, VPN, DNS filter, or ad blocker.");
-          }
-        };
+        script.onerror = () => fail("The YouTube player API download was blocked. Check your connection, VPN, DNS filter, or ad blocker.");
         document.head.appendChild(script);
+      } else {
+        script.addEventListener("error", () => fail("The YouTube player API download was blocked. Check your connection, VPN, DNS filter, or ad blocker."), { once: true });
       }
+
       apiTimeout = setTimeout(() => {
         if (!cancelled && !window.YT?.Player) {
-          cleanupTimers();
-          setLoadError("Timed out loading YouTube's API. Check whether your network or an extension is blocking youtube.com.");
+          fail("Timed out loading YouTube's player API. Check whether youtube.com is blocked by your network, VPN, DNS filter, or browser extension.");
         }
-      }, 12000);
-      poll = setInterval(() => { if (window.YT?.Player) init(); }, 150);
+      }, 15000);
+      poll = setInterval(() => {
+        if (window.YT?.Player) init();
+      }, 100);
     }
 
-    return () => { cancelled = true; cleanupTimers(); };
+    return () => {
+      cancelled = true;
+      clearTimers();
+      if (window.onYouTubeIframeAPIReady && previousReadyCallback) {
+        window.onYouTubeIframeAPIReady = previousReadyCallback;
+      }
+    };
   }, [host]);
 
   const api = useMemo(() => ({
     loadVideo: (id: string) => player.current?.loadVideoById(id),
-    setVolume: (v: number) => player.current?.setVolume(v),
+    setVolume: (volume: number) => player.current?.setVolume(volume),
     stop: () => player.current?.stopVideo(),
   }), []);
+
   return { ready, loadError, api };
 }
