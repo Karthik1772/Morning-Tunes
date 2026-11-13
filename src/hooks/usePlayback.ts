@@ -38,6 +38,7 @@ export function usePlayback(settings: Settings, host: RefObject<HTMLDivElement |
     return ctx.current as AudioContext;
   };
   const unlock = async () => {
+    api.unlock();
     const c = ensureCtx();
     try { await c?.resume(); if (c) { const src = c.createBufferSource(); src.buffer = c.createBuffer(1, 1, 22050); src.connect(c.destination); src.start(0); } } catch {}
   };
@@ -49,7 +50,7 @@ export function usePlayback(settings: Settings, host: RefObject<HTMLDivElement |
     clearFade();
     if (!settingsRef.current.fadeIn) { setVol(target); return; }
     let v = 0; setVol(0);
-    fadeTimer.current = setInterval(() => { v = Math.min(target, v + 5); setVol(v); if (v >= target) clearFade(); }, 1200);
+    fadeTimer.current = setInterval(() => { const latestTarget = settingsRef.current.volume; v = Math.min(latestTarget, v + 5); setVol(v); if (v >= latestTarget) clearFade(); }, 1200);
   };
   const startBeep = (why: string) => {
     if (beepTimer.current) return;
@@ -128,6 +129,7 @@ export function usePlayback(settings: Settings, host: RefObject<HTMLDivElement |
   self.current = { onYtState, onYtError, onBlocked };
   const startRef = useRef(start); startRef.current = start;
   useEffect(() => { if (loadError) setStatus(loadError); }, [loadError]);
+  useEffect(() => { if (active.current && !fadeTimer.current) api.setVolume(settings.volume); }, [settings.volume, api]);
   useEffect(() => {
     if (ready) {
       setStatus((p) => p === "Player is loading" ? "Player ready" : p);
@@ -135,5 +137,5 @@ export function usePlayback(settings: Settings, host: RefObject<HTMLDivElement |
     }
   }, [ready]);
   useEffect(() => () => { clearFade(); clearWatchdog(); stopBeep(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
-  return { ready, loadError, status, playingTitle, fallback, start, stop, unlock };
+  return { ready, loadError, status, playingTitle, fallback, start, stop, unlock, setVolume: (volume: number) => api.setVolume(volume) };
 }
