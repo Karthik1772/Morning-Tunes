@@ -1,7 +1,7 @@
-import { normalizeSettings, type AgentStatus, type Heartbeat, type Settings } from "./types";
+import { normalizeSettings, type Heartbeat, type Settings } from "./types";
 
 export type Fail = { status: "unconfigured" | "badpass" | "error" };
-export type RemoteResult = { status: "ok"; settings: Settings | null; heartbeat: Heartbeat | null; agent: AgentStatus | null } | Fail;
+export type RemoteResult = { status: "ok"; settings: Settings | null; heartbeat: Heartbeat | null } | Fail;
 export type PushResult = { status: "ok" } | { status: "conflict"; settings: Settings } | Fail;
 
 const headers = (p: string) => ({ "content-type": "application/json", "x-passcode": p });
@@ -12,8 +12,7 @@ export async function fetchRemote(passcode: string): Promise<RemoteResult> {
     const r = await fetch("/api/settings", { headers: headers(passcode), cache: "no-store" });
     if (!r.ok) return failOf(r.status);
     const j = await r.json();
-    const a = j.agent && typeof j.agent.at === "number" ? { at: j.agent.at as number, state: String(j.agent.state ?? "").slice(0, 30), detail: String(j.agent.detail ?? "").slice(0, 200) } : null;
-    return { status: "ok", settings: j.settings ? normalizeSettings(j.settings) : null, heartbeat: j.heartbeat ?? null, agent: a };
+    return { status: "ok", settings: j.settings ? normalizeSettings(j.settings) : null, heartbeat: j.heartbeat ?? null };
   } catch { return { status: "error" }; }
 }
 export async function pushRemote(passcode: string, settings: Settings): Promise<PushResult> {

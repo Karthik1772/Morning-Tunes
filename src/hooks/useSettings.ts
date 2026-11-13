@@ -3,7 +3,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { fetchRemote, pushRemote, sendHeartbeat } from "@/lib/sync";
 import {
   DEFAULT_DEVICE, DEFAULT_SETTINGS, DEVICE_KEY, PASSCODE_KEY, STORAGE_KEY, normalizeDevice, normalizeSettings,
-  type AgentStatus, type DeviceSettings, type Heartbeat, type Settings,
+  type DeviceSettings, type Heartbeat, type Settings,
 } from "@/lib/types";
 
 export type SyncState = "local" | "syncing" | "synced" | "badpass" | "unconfigured" | "error";
@@ -19,7 +19,6 @@ export function useSettings(armed: boolean) {
   const [passcode, setPasscodeState] = useState("");
   const [sync, setSync] = useState<SyncState>("local");
   const [heartbeat, setHeartbeat] = useState<Heartbeat | null>(null);
-  const [agent, setAgent] = useState<AgentStatus | null>(null);
 
   const settingsRef = useRef(settings); settingsRef.current = settings;
   const passRef = useRef(passcode); passRef.current = passcode;
@@ -54,7 +53,6 @@ export function useSettings(armed: boolean) {
     const r = await fetchRemote(p);
     if (r.status !== "ok") { if (r.status === "unconfigured") dead.current = true; setSync(r.status); return; }
     setHeartbeat(r.heartbeat);
-    setAgent(r.agent);
     const local = settingsRef.current;
     if (r.settings && r.settings.updatedAt > local.updatedAt) { applyRemote(r.settings); setSync("synced"); }
     else if (local.updatedAt > (r.settings?.updatedAt ?? 0)) await push();
@@ -77,5 +75,5 @@ export function useSettings(armed: boolean) {
   const setPasscode = useCallback((p: string) => { write(PASSCODE_KEY, p); setPasscodeState(p); }, []);
   const reset = useCallback(() => patch({ ...DEFAULT_SETTINGS }), [patch]);
 
-  return { ready, settings, patch, device, patchDevice, passcode, setPasscode, sync, heartbeat, agent, syncNow: pull, reset };
+  return { ready, settings, patch, device, patchDevice, passcode, setPasscode, sync, heartbeat, syncNow: pull, reset };
 }

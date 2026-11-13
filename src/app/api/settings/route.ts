@@ -5,8 +5,6 @@ import { normalizeSettings, type Settings } from "@/lib/types";
 export const dynamic = "force-dynamic";
 const KEY_SETTINGS = "morningtunes:settings";
 const KEY_HEARTBEAT = "morningtunes:heartbeat";
-const KEY_AGENT = "morningtunes:agent";
-const AGENT_STATES = ["idle", "playing", "played", "skipped", "speaker-failed", "error"] as const;
 
 const cfg = () => ({
   url: process.env.UPSTASH_REDIS_REST_URL ?? process.env.KV_REST_API_URL,
@@ -34,8 +32,8 @@ const parse = (v: unknown) => { try { return typeof v === "string" ? JSON.parse(
 export async function GET(req: NextRequest) {
   const denied = guard(req); if (denied) return denied;
   try {
-    const [s, h, a] = await Promise.all([redis(["GET", KEY_SETTINGS]), redis(["GET", KEY_HEARTBEAT]), redis(["GET", KEY_AGENT])]);
-    return NextResponse.json({ settings: parse(s), heartbeat: parse(h), agent: parse(a) });
+    const [s, h] = await Promise.all([redis(["GET", KEY_SETTINGS]), redis(["GET", KEY_HEARTBEAT])]);
+    return NextResponse.json({ settings: parse(s), heartbeat: parse(h) });
   } catch { return NextResponse.json({ error: "storage_error" }, { status: 502 }); }
 }
 
@@ -59,16 +57,10 @@ export async function PUT(req: NextRequest) {
  */
 export async function POST(req: NextRequest) {
   const denied = guard(req); if (denied) return denied;
-  let body: { armed?: unknown; source?: unknown; state?: unknown; detail?: unknown } = {};
-  try { body = await req.json(); } catch {}
+  let body: { armed?: unknown } = {};
+  try { body = await req.json(); } catch { return NextResponse.json({ error: "bad_json" }, { status: 400 }); }
   try {
-    if (body.source === "agent") {
-      const state = (AGENT_STATES as readonly unknown[]).includes(body.state) ? body.state : "idle";
-      const detail = typeof body.detail === "string" ? body.detail.replace(/[\u0000-\u001f]/g, " ").slice(0, 200) : "";
-      await redis(["SET", KEY_AGENT, JSON.stringify({ at: Date.now(), state, detail })]);
-    } else {
-      await redis(["SET", KEY_HEARTBEAT, JSON.stringify({ at: Date.now(), armed: body.armed === true })]);
-    }
+    await redis(["SET", KEY_HEARTBEAT, JSON.stringify({ at: Date.now(), armed: body.armed === true }), "EX", "180"]);
     return NextResponse.json({ ok: true });
   } catch { return NextResponse.json({ error: "storage_error" }, { status: 502 }); }
 }
