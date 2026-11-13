@@ -1,2 +1,5 @@
-import MorningTunes from "@/components/MorningTunes";
-export default function Home() { return <MorningTunes />; }
+import MorningTunesLoader from "@/components/MorningTunesLoader";
+
+export default function Home() {
+  return <MorningTunesLoader />;
+}
