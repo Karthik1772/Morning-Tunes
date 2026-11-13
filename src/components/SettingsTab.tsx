@@ -58,15 +58,12 @@ export default function SettingsTab({ settings, patch, device, patchDevice, pass
             <button key={d} onClick={() => patch({ customDays: settings.customDays.includes(i) ? settings.customDays.filter((x) => x !== i) : [...settings.customDays, i] })} className={`btn ${settings.customDays.includes(i) ? "btn-primary" : "btn-secondary"}`}>{d}</button>))}
         </div></div>}
         <div><label className="label">Play the alarm on</label>
-          <select className="field" value={settings.playOn} onChange={(e) => patch({ playOn: e.target.value as Settings["playOn"] })}>
-            <option value="browser">This browser tab (must stay open)</option>
-            <option value="agent">Windows agent (wakes the laptop, no tab needed)</option>
-          </select></div>
+</div>
         <div className="flex justify-between items-center">
-          <div><div className="text-sm font-semibold">Enable alarm</div><div className="text-xs muted">{settings.playOn === "agent" ? "The Windows agent on your laptop plays it" : "Keep this dashboard open on the player device"}</div></div>
+          <div><div className="text-sm font-semibold">Enable alarm</div><div className="text-xs muted">Keep this dashboard open and this device awake</div></div>
           <input aria-label="Enable alarm" className="switch" type="checkbox" checked={settings.enabled} onChange={(e) => onToggleEnabled(e.target.checked)} />
         </div>
-        <div className="rounded-xl bg-amber-400/10 border border-amber-400/20 p-3 text-xs text-amber-100 flex gap-2"><CircleHelp size={16} className="shrink-0" /> {settings.playOn === "agent" ? "Needs sync turned on (passcode) and the Windows agent installed on the laptop: see windows-agent/README.md. The laptop wakes itself shortly before the alarm and plays through your Bluetooth speaker." : "The alarm runs only while this page is open and the device is awake. If the device wakes up late, it still plays within 10 minutes of the alarm time."}</div>
+        <div className="rounded-xl bg-amber-400/10 border border-amber-400/20 p-3 text-xs text-amber-100 flex gap-2"><CircleHelp size={16} className="shrink-0" /> The alarm runs only while this page is open and the device is awake. If the device wakes up late, it still plays within 10 minutes of the alarm time.</div>
       </div>
 
       <div className="panel p-6 space-y-4">
@@ -81,8 +78,7 @@ export default function SettingsTab({ settings, patch, device, patchDevice, pass
           <button className="btn btn-secondary" disabled={!passcode} onClick={() => void syncNow()}><RefreshCw size={15} /> Sync now</button>
           {passcode && <button className="btn btn-secondary" onClick={() => { setPasscode(""); setPassDraft(""); }}>Turn off sync</button>}
         </div>
-        <p className="text-xs muted">Alarm settings and the song queue sync. The speaker section and local audio files stay on each device.</p>
-        {settings.playOn === "agent" && !passcode && <p className="text-xs text-amber-200">Windows agent mode needs sync: enter your passcode above, or the agent can't read your settings.</p>}
+        <p className="text-xs muted">Alarm settings and your YouTube library sync across devices. Bluetooth pairing stays managed by each device.</p>
       </div>
 
       <div className="panel p-6 space-y-5 lg:col-span-2">
@@ -101,7 +97,7 @@ export default function SettingsTab({ settings, patch, device, patchDevice, pass
           {speakerTested && <button className="btn btn-secondary" onClick={confirmSpeaker}><Check size={16} /> I heard it on this speaker</button>}
         </div>
         <div className="rounded-xl border border-slate-700 bg-slate-900/50 p-3 text-sm muted" role="status">{speakerMessage}</div>
-        <p className="text-xs muted">{settings.playOn === "agent" ? "In Windows agent mode the speaker name is read from windows-agent/agent-config.json on the laptop (not from this page). The agent reconnects the speaker before each alarm." : "Browser limitation: a web page cannot inspect Bluetooth connection status or connect by MAC address. Make sure the speaker is on and auto-connects to this device (see the README wake-up guide)."}</p>
+        <p className="text-xs muted">A web page cannot inspect Bluetooth connection status or connect by MAC address. Make sure the speaker is paired and selected as this device audio output.</p>
       </div>
 
       <div className="panel p-6 space-y-5 lg:col-span-2">
