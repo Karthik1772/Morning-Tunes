@@ -63,9 +63,9 @@ export default function MorningTunes() {
                 <div className="text-xs muted">{!settings.enabled ? "Turn on to schedule playback" : armed ? "Ready for scheduled playback" : "Click Test playback once after opening"}</div></div>
               <input aria-label="Enable alarm" className="switch" type="checkbox" checked={settings.enabled} onChange={(e) => toggleEnabled(e.target.checked)} />
             </div>
-            {passcode && !armed && (
+            {passcode && (
               <div className={`text-xs ${playerSeen && heartbeat?.armed ? "text-emerald-300" : "text-amber-200"}`}>
-                {heartbeat ? (playerSeen && heartbeat.armed ? `Player online and armed · seen ${ago(now.getTime() - heartbeat.at)}` : `Player last seen ${ago(now.getTime() - heartbeat.at)}. It may be asleep or closed`) : "No player has checked in yet"}
+                {heartbeat ? (playerSeen && heartbeat.armed ? `Player online and armed · seen ${ago(now.getTime() - heartbeat.at)}` : `Player last seen ${ago(now.getTime() - heartbeat.at)}. It may be asleep or closed`) : armed ? "This browser is armed · waiting for player check-in" : "No player has checked in yet"}
               </div>
             )}
           </div>
