@@ -1,12 +1,24 @@
 "use client";
 import { RefObject, useEffect, useMemo, useRef, useState } from "react";
 
-declare global { interface Window { YT?: any; onYouTubeIframeAPIReady?: () => void } }
-export type YTHandlers = { onState: (state: number) => void; onError: (code: number) => void; onBlocked: () => void };
+declare global {
+  interface Window {
+    YT?: any;
+    onYouTubeIframeAPIReady?: () => void;
+  }
+}
+export type YTHandlers = {
+  onState: (state: number) => void;
+  onError: (code: number) => void;
+  onBlocked: () => void;
+};
 
 const API_URL = "https://www.youtube.com/iframe_api";
 
-export function useYouTubePlayer(host: RefObject<HTMLDivElement | null>, handlers: YTHandlers) {
+export function useYouTubePlayer(
+  host: RefObject<HTMLDivElement | null>,
+  handlers: YTHandlers,
+) {
   const player = useRef<any>(null);
   const readyRef = useRef(false);
   const [ready, setReady] = useState(false);
@@ -42,7 +54,8 @@ export function useYouTubePlayer(host: RefObject<HTMLDivElement | null>, handler
     };
 
     const initializePlayer = () => {
-      if (cancelled || !container || player.current || !window.YT?.Player) return;
+      if (cancelled || !container || player.current || !window.YT?.Player)
+        return;
       clear();
       setLoadError("");
       const mount = document.createElement("div");
@@ -54,8 +67,12 @@ export function useYouTubePlayer(host: RefObject<HTMLDivElement | null>, handler
           width: "640",
           height: "360",
           playerVars: {
-            autoplay: 0, playsinline: 1, controls: 1, rel: 0,
-            enablejsapi: 1, origin: window.location.origin,
+            autoplay: 0,
+            playsinline: 1,
+            controls: 1,
+            rel: 0,
+            enablejsapi: 1,
+            origin: window.location.origin,
             widget_referrer: window.location.href,
           },
           events: {
@@ -66,8 +83,14 @@ export function useYouTubePlayer(host: RefObject<HTMLDivElement | null>, handler
               const iframe = event?.target?.getIframe?.();
               if (iframe) {
                 iframe.title = "MorningTunes YouTube music player";
-                iframe.setAttribute("allow", "autoplay; encrypted-media; picture-in-picture");
-                iframe.setAttribute("referrerpolicy", "strict-origin-when-cross-origin");
+                iframe.setAttribute(
+                  "allow",
+                  "autoplay; encrypted-media; picture-in-picture",
+                );
+                iframe.setAttribute(
+                  "referrerpolicy",
+                  "strict-origin-when-cross-origin",
+                );
                 iframe.classList.add("youtube-player-iframe");
               }
               setLoadError("");
@@ -77,19 +100,26 @@ export function useYouTubePlayer(host: RefObject<HTMLDivElement | null>, handler
             onError: (event: any) => {
               const code = Number(event?.data);
               if (!readyRef.current) {
-                fail(code === 153
-                  ? "YouTube blocked the embed because browser identification/referrer information was unavailable (error 153)."
-                  : `YouTube could not initialize the embedded player (error ${code}).`);
+                fail(
+                  code === 153
+                    ? "YouTube blocked the embed because browser identification/referrer information was unavailable (error 153)."
+                    : `YouTube could not initialize the embedded player (error ${code}).`,
+                );
               } else h.current.onError(code);
             },
             onAutoplayBlocked: () => h.current.onBlocked(),
           },
         });
         readyTimeout = setTimeout(() => {
-          if (!cancelled && !readyRef.current) fail("YouTube's API loaded, but the video frame did not become ready. Check youtube.com access and browser privacy settings.");
+          if (!cancelled && !readyRef.current)
+            fail(
+              "YouTube's API loaded, but the video frame did not become ready. Check youtube.com access and browser privacy settings.",
+            );
         }, 15000);
       } catch {
-        fail("The YouTube player could not initialize. Check network access and browser extensions.");
+        fail(
+          "The YouTube player could not initialize. Check network access and browser extensions.",
+        );
       }
     };
 
@@ -102,23 +132,42 @@ export function useYouTubePlayer(host: RefObject<HTMLDivElement | null>, handler
 
       previousReadyCallback = window.onYouTubeIframeAPIReady;
       apiCallback = () => {
-        try { previousReadyCallback?.(); } finally { initializePlayer(); }
+        try {
+          previousReadyCallback?.();
+        } finally {
+          initializePlayer();
+        }
       };
       window.onYouTubeIframeAPIReady = apiCallback;
 
-      let script = document.querySelector<HTMLScriptElement>(`script[src="${API_URL}"]`);
+      let script = document.querySelector<HTMLScriptElement>(
+        `script[src="${API_URL}"]`,
+      );
       if (!script) {
         script = document.createElement("script");
         script.src = API_URL;
         script.async = true;
-        script.onerror = () => fail("The YouTube player API download was blocked. Check your connection, VPN, DNS filter, or ad blocker.");
+        script.onerror = () =>
+          fail(
+            "The YouTube player API download was blocked. Check your connection, VPN, DNS filter, or ad blocker.",
+          );
         document.head.appendChild(script);
       } else {
-        script.addEventListener("error", () => fail("The YouTube player API download was blocked. Check your connection, VPN, DNS filter, or ad blocker."), { once: true });
+        script.addEventListener(
+          "error",
+          () =>
+            fail(
+              "The YouTube player API download was blocked. Check your connection, VPN, DNS filter, or ad blocker.",
+            ),
+          { once: true },
+        );
       }
 
       apiTimeout = setTimeout(() => {
-        if (!cancelled && !window.YT?.Player) fail("Timed out loading YouTube's player API. Check whether youtube.com is blocked by your network or browser.");
+        if (!cancelled && !window.YT?.Player)
+          fail(
+            "Timed out loading YouTube's player API. Check whether youtube.com is blocked by your network or browser.",
+          );
       }, 15000);
       apiPoll = setInterval(() => {
         if (window.YT?.Player) initializePlayer();
@@ -146,7 +195,10 @@ export function useYouTubePlayer(host: RefObject<HTMLDivElement | null>, handler
         }
       }, 100);
       hostTimeout = setTimeout(() => {
-        if (!container && !cancelled) fail("The video player area did not mount. Refresh the page and try again.");
+        if (!container && !cancelled)
+          fail(
+            "The video player area did not mount. Refresh the page and try again.",
+          );
       }, 20000);
     }
 
@@ -159,23 +211,26 @@ export function useYouTubePlayer(host: RefObject<HTMLDivElement | null>, handler
     };
   }, [host]);
 
-  const api = useMemo(() => ({
-    loadVideo: (id: string) => player.current?.loadVideoById(id),
-    setVolume: (volume: number) => player.current?.setVolume(volume),
-    play: () => player.current?.playVideo(),
-    pause: () => player.current?.pauseVideo(),
-    stop: () => player.current?.stopVideo(),
-    unlock: () => {
-      const currentPlayer = player.current;
-      if (!readyRef.current || !currentPlayer) return;
-      // Prime YouTube playback during the user click that enables the alarm.
-      currentPlayer.mute();
-      currentPlayer.setVolume(0);
-      currentPlayer.playVideo();
-      currentPlayer.pauseVideo();
-      currentPlayer.unMute();
-    },
-  }), []);
+  const api = useMemo(
+    () => ({
+      loadVideo: (id: string) => player.current?.loadVideoById(id),
+      setVolume: (volume: number) => player.current?.setVolume(volume),
+      play: () => player.current?.playVideo(),
+      pause: () => player.current?.pauseVideo(),
+      stop: () => player.current?.stopVideo(),
+      unlock: () => {
+        const currentPlayer = player.current;
+        if (!readyRef.current || !currentPlayer) return;
+        // Prime YouTube playback during the user click that enables the alarm.
+        currentPlayer.mute();
+        currentPlayer.setVolume(0);
+        currentPlayer.playVideo();
+        currentPlayer.pauseVideo();
+        currentPlayer.unMute();
+      },
+    }),
+    [],
+  );
 
   return { ready, loadError, api };
 }

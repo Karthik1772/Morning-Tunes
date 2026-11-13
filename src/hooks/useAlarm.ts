@@ -4,7 +4,11 @@ import { shouldFire } from "@/lib/alarm";
 import { LAST_FIRED_KEY, type Settings } from "@/lib/types";
 
 /** Checks the schedule every second and when the page becomes active. */
-export function useAlarm(settings: Settings, settingsLoaded: boolean, onAlarm: () => void) {
+export function useAlarm(
+  settings: Settings,
+  settingsLoaded: boolean,
+  onAlarm: () => void,
+) {
   const latestSettings = useRef(settings);
   const alarmCallback = useRef(onAlarm);
   const [notice, setNotice] = useState("");
@@ -18,13 +22,23 @@ export function useAlarm(settings: Settings, settingsLoaded: boolean, onAlarm: (
     const checkSchedule = () => {
       const currentSettings = latestSettings.current;
       let lastTriggeredKey = "";
-      try { lastTriggeredKey = localStorage.getItem(LAST_FIRED_KEY) ?? ""; } catch {}
+      try {
+        lastTriggeredKey = localStorage.getItem(LAST_FIRED_KEY) ?? "";
+      } catch {}
 
-      const decision = shouldFire(currentSettings, new Date(), lastTriggeredKey);
+      const decision = shouldFire(
+        currentSettings,
+        new Date(),
+        lastTriggeredKey,
+      );
       if (!decision.fire) return;
 
-      try { localStorage.setItem(LAST_FIRED_KEY, decision.key); } catch {}
-      setNotice(`Alarm triggered at ${new Date().toLocaleTimeString("en-IN", { timeZone: currentSettings.timezone })} (${currentSettings.timezone})`);
+      try {
+        localStorage.setItem(LAST_FIRED_KEY, decision.key);
+      } catch {}
+      setNotice(
+        `Alarm triggered at ${new Date().toLocaleTimeString("en-IN", { timeZone: currentSettings.timezone })} (${currentSettings.timezone})`,
+      );
       alarmCallback.current();
     };
 
