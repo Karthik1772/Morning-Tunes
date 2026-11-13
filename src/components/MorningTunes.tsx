@@ -33,7 +33,7 @@ export default function MorningTunes() {
         <div className="flex items-center gap-3">
           <img src="/logo.svg" alt="MorningTunes" className="h-12 w-auto" />
         </div>
-        <div className="text-xs muted flex items-center gap-2"><span className={`h-2 w-2 rounded-full ${pb.ready ? "bg-emerald-400" : "bg-amber-400"}`} />{pb.ready ? "Player ready" : "Connecting player"} · {time}</div>
+        <div className="text-xs muted flex items-center gap-2" title={pb.loadError || (pb.ready ? "YouTube player initialized" : "Waiting for YouTube")}><span className={`h-2 w-2 rounded-full ${pb.ready ? "bg-emerald-400" : pb.loadError ? "bg-rose-400" : "bg-amber-400"}`} />{pb.ready ? "Player ready" : pb.loadError ? "Player error" : "Connecting player"} · {time}</div>
       </header>
 
       {settings.enabled && !armed && (
@@ -81,10 +81,10 @@ export default function MorningTunes() {
         <div className="panel p-6">
           <div className="flex items-center justify-between mb-5">
             <div><div className="eyebrow mb-1">Now playing</div><h2 className="text-xl font-bold">{pb.playingTitle}</h2>
-              <p className="text-xs muted mt-1" role="status">{pb.status}</p></div>
+              <p className={`text-xs mt-1 ${pb.loadError ? "text-rose-300" : "muted"}`} role="status" aria-live="polite">{pb.status}</p></div>
             <Music2 className={pb.fallback ? "text-rose-300" : "text-amber-300"} />
           </div>
-          <div className="rounded-xl overflow-hidden bg-black/30 min-h-[180px] flex items-center justify-center"><div ref={playerHost} /></div>
+          <div className="youtube-player-host"><div ref={playerHost} className="w-full" /></div>
           {alarmNotice && <p className="text-xs muted mt-3">{alarmNotice}</p>}
           <div className="text-xs muted mt-4 flex items-center gap-2"><Bluetooth size={14} /> Pair your speaker in your device Bluetooth settings</div>
         </div>
