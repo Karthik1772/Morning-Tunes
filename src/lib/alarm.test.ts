@@ -8,6 +8,11 @@ const base = { enabled: true, alarmTime: "06:00", schedule: "daily" as const, cu
 const at = (hhmmUtc: string, date = "2026-11-14") => new Date(`${date}T${hhmmUtc}:00Z`);
 
 test("fires in the alarm minute", () => assert.equal(shouldFire(base, at("00:30"), "").fire, true));
+test("does not retrigger the same alarm time within the same day", () => {
+  const first = shouldFire(base, at("00:30"), "");
+  assert.equal(first.fire, true);
+  assert.equal(shouldFire(base, at("00:31"), first.key).fire, false);
+});
 test("fires when the laptop wakes 7 minutes late", () => assert.equal(shouldFire(base, at("00:37"), "").fire, true));
 test("does not fire after the grace window", () => assert.equal(shouldFire(base, at("00:41"), "").fire, false));
 test("does not fire early", () => assert.equal(shouldFire(base, at("00:29"), "").fire, false));
