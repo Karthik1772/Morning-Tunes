@@ -135,5 +135,5 @@ export function usePlayback(settings: Settings, host: RefObject<HTMLDivElement |
     }
   }, [ready]);
   useEffect(() => () => { clearFade(); clearWatchdog(); stopBeep(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
-  return { ready, status, playingTitle, fallback, start, stop, unlock };
+  return { ready, loadError, status, playingTitle, fallback, start, stop, unlock };
 }
