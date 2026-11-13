@@ -7,6 +7,8 @@ import { useAlarm } from "@/hooks/useAlarm";
 import LibraryTab from "./LibraryTab";
 import SettingsTab from "./SettingsTab";
 
+const ago = (ms: number) => { const s = Math.max(0, Math.round(ms / 1000)); return s < 90 ? `${s}s ago` : s < 5400 ? `${Math.round(s / 60)} min ago` : `${Math.round(s / 3600)} h ago`; };
+
 export default function MorningTunes() {
   const [armed, setArmed] = useState(false); // this tab has had a click, so the browser allows sound
   const { ready, settings, patch, device, patchDevice, passcode, setPasscode, sync, heartbeat, syncNow, reset } = useSettings(armed);
