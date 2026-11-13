@@ -57,8 +57,6 @@ export default function SettingsTab({ settings, patch, device, patchDevice, pass
           {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d, i) => (
             <button key={d} onClick={() => patch({ customDays: settings.customDays.includes(i) ? settings.customDays.filter((x) => x !== i) : [...settings.customDays, i] })} className={`btn ${settings.customDays.includes(i) ? "btn-primary" : "btn-secondary"}`}>{d}</button>))}
         </div></div>}
-        <div><label className="label">Play the alarm on</label>
-</div>
         <div className="flex justify-between items-center">
           <div><div className="text-sm font-semibold">Enable alarm</div><div className="text-xs muted">Keep this dashboard open and this device awake</div></div>
           <input aria-label="Enable alarm" className="switch" type="checkbox" checked={settings.enabled} onChange={(e) => onToggleEnabled(e.target.checked)} />
@@ -106,10 +104,9 @@ export default function SettingsTab({ settings, patch, device, patchDevice, pass
           <div className="space-y-5">
             <div><label className="label">After the last song</label>
               <select className="field" value={settings.endBehaviour} onChange={(e) => patch({ endBehaviour: e.target.value as Settings["endBehaviour"] })}>
-                <option value="stop">Stop playback</option><option value="repeat">Restart playlist</option><option value="next">Switch to another playlist</option>
+                <option value="stop">Stop after the last saved song</option><option value="repeat">Repeat saved song queue</option>
               </select></div>
-            {settings.endBehaviour === "next" && <div><label className="label">Next playlist URL</label><input className="field" value={settings.nextPlaylistUrl} onChange={(e) => patch({ nextPlaylistUrl: e.target.value })} /></div>}
-            <div className="flex justify-between items-center"><div><div className="text-sm font-semibold">Shuffle</div><div className="text-xs muted">Randomize the queue / playlist</div></div><input aria-label="Shuffle" className="switch" type="checkbox" checked={settings.shuffle} onChange={(e) => patch({ shuffle: e.target.checked })} /></div>
+            <div className="flex justify-between items-center"><div><div className="text-sm font-semibold">Shuffle</div><div className="text-xs muted">Randomize the saved song queue</div></div><input aria-label="Shuffle" className="switch" type="checkbox" checked={settings.shuffle} onChange={(e) => patch({ shuffle: e.target.checked })} /></div>
             <div className="flex justify-between items-center"><div><div className="text-sm font-semibold">Gradual volume fade-in</div><div className="text-xs muted">Starts quietly when the alarm begins</div></div><input aria-label="Fade in" className="switch" type="checkbox" checked={settings.fadeIn} onChange={(e) => patch({ fadeIn: e.target.checked })} /></div>
           </div>
           <div className="space-y-5">
