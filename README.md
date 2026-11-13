@@ -1,14 +1,17 @@
 # MorningTunes
 
-A simple YouTube-powered alarm dashboard. Add a YouTube playlist or individual YouTube song links, choose an alarm time and repeat schedule, and play through the audio output selected by your device (including a paired Bluetooth speaker).
+A browser-based YouTube alarm. Add individual YouTube video URLs to your song queue, choose an alarm time and repeat schedule, and play through the audio output selected by your device (including a paired Bluetooth speaker).
 
 ## How it works
 
+- Add songs one at a time using individual YouTube video URLs. YouTube playlists are not supported.
+- The alarm plays only the videos explicitly saved in your queue, in order or shuffled.
+- Choose whether playback stops after the last saved song or repeats the same queue.
 - The browser tab is the alarm player. Keep MorningTunes open and the device awake at alarm time.
 - Click **Arm this device** (or enable the alarm) after opening the page so the browser can unlock audio.
 - The alarm checks every second and on tab focus/wake. If the device wakes late, it can still fire within 10 minutes of the scheduled time, once per day.
-- If a YouTube video cannot be embedded or played, it is skipped. If no song starts during an alarm, a fallback beep sounds until you press Stop.
-- Bluetooth pairing and output selection are managed by Windows, Android, macOS, or your device OS. The web app cannot connect to Bluetooth by MAC address or guarantee playback when the browser is closed.
+- If a saved YouTube video cannot be embedded or played, it is skipped. If no song starts during an alarm, a fallback beep sounds until you press Stop.
+- Bluetooth pairing and output selection are managed by your device OS. The web app cannot connect to Bluetooth by MAC address or guarantee playback when the browser is closed.
 
 ## Run locally
 
@@ -25,7 +28,7 @@ Deploy the Next.js project to Vercel. No environment variables are required for 
 
 ## Optional cross-device sync
 
-To share alarm settings and the YouTube library between devices, configure Upstash Redis in Vercel:
+To share alarm settings and your individual YouTube song queue between devices, configure Upstash Redis in Vercel:
 
 - `UPSTASH_REDIS_REST_URL`
 - `UPSTASH_REDIS_REST_TOKEN`
