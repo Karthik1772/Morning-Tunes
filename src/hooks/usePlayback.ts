@@ -1,7 +1,7 @@
 "use client";
 import { RefObject, useEffect, useRef, useState } from "react";
 import type { Settings, Song } from "@/lib/types";
-import { shuffled } from "@/lib/shuffle";
+import { shuffleItems } from "@/lib/shuffle";
 import { useYouTubePlayer } from "./useYouTubePlayer";
 
 const WATCHDOG_MS = 15000;
@@ -121,7 +121,7 @@ export function usePlayback(settings: Settings, host: RefObject<HTMLDivElement |
     const fail = (msg: string) => { if (alarm) startBeep(msg); else { setStatus(msg); active.current = false; } };
     if (!s.songs.length) return fail("Add at least one YouTube song to your queue");
     if (!readyRef.current) { pendingStart.current = true; setStatus("Waiting for the YouTube player to load"); return; }
-    queue.current = s.shuffle ? shuffled(s.songs) : [...s.songs];
+    queue.current = s.shuffle ? shuffleItems(s.songs) : [...s.songs];
     playIndex(0, true);
   };
 
