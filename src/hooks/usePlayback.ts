@@ -99,7 +99,7 @@ export function usePlayback(settings: Settings, host: RefObject<HTMLDivElement |
   };
   const onBlocked = () => {
     if (!active.current) return;
-    if (isAlarm.current) startBeep("The browser blocked autoplay. Press Arm after opening the page next time");
+    if (isAlarm.current) startBeep("The browser blocked autoplay. Click Test playback once after opening the page to allow audio");
     else setStatus("The browser blocked autoplay. Click anywhere on the page, then try again");
   };
   const onYtState = (state: number) => {
