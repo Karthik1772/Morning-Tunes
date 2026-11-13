@@ -12,27 +12,48 @@ export function useYouTubePlayer(host: RefObject<HTMLDivElement | null>, handler
 
   useEffect(() => {
     const container = host.current;
-    if (!container) return;
+    if (!container) { setLoadError("Player container was not mounted. Refresh the page."); return; }
     let cancelled = false;
     let poll: ReturnType<typeof setInterval> | null = null;
+    let readyTimeout: ReturnType<typeof setTimeout> | null = null;
+    let apiTimeout: ReturnType<typeof setTimeout> | null = null;
+
+    const cleanupTimers = () => {
+      if (poll) { clearInterval(poll); poll = null; }
+      if (readyTimeout) { clearTimeout(readyTimeout); readyTimeout = null; }
+      if (apiTimeout) { clearTimeout(apiTimeout); apiTimeout = null; }
+    };
 
     const init = () => {
       if (cancelled || player.current || !window.YT?.Player) return;
       if (poll) { clearInterval(poll); poll = null; }
+      if (apiTimeout) { clearTimeout(apiTimeout); apiTimeout = null; }
+      setLoadError("");
       const el = document.createElement("div");
       container.appendChild(el);
       try {
         player.current = new window.YT.Player(el, {
           height: "180", width: "320",
-          playerVars: { playsinline: 1, controls: 1, rel: 0, enablejsapi: 1 },
+          playerVars: { playsinline: 1, controls: 1, rel: 0, origin: window.location.origin },
           events: {
-            onReady: () => { if (!cancelled) { setLoadError(""); setReady(true); } },
+            onReady: () => {
+              if (cancelled) return;
+              cleanupTimers();
+              setLoadError("");
+              setReady(true);
+            },
             onStateChange: (e: any) => h.current.onState(e.data),
-            onError: (e: any) => h.current.onError(e.data),
+            onError: (e: any) => {
+              if (!ready) setLoadError(`YouTube player initialization error (${e.data}).`);
+              else h.current.onError(e.data);
+            },
             onAutoplayBlocked: () => h.current.onBlocked(),
           },
         });
-      } catch {
+        readyTimeout = setTimeout(() => {
+          if (!cancelled && !ready) setLoadError("YouTube's API loaded, but its embedded player did not become ready. Check browser extensions, network restrictions, and whether youtube.com is accessible.");
+        }, 12000);
+      } catch (err) {
         setLoadError("The YouTube player could not initialize. Check network access or browser extensions.");
       }
     };
@@ -41,8 +62,7 @@ export function useYouTubePlayer(host: RefObject<HTMLDivElement | null>, handler
       init();
     } else {
       const previous = window.onYouTubeIframeAPIReady;
-      const callback = () => { previous?.(); init(); };
-      window.onYouTubeIframeAPIReady = callback;
+      window.onYouTubeIframeAPIReady = () => { previous?.(); init(); };
 
       let script = document.querySelector<HTMLScriptElement>('script[src="https://www.youtube.com/iframe_api"]');
       if (!script) {
@@ -50,22 +70,23 @@ export function useYouTubePlayer(host: RefObject<HTMLDivElement | null>, handler
         script.src = "https://www.youtube.com/iframe_api";
         script.async = true;
         script.onerror = () => {
-          if (!cancelled) setLoadError("Couldn't load YouTube's player API. Check your internet connection, VPN, or ad blocker.");
+          if (!cancelled) {
+            cleanupTimers();
+            setLoadError("The YouTube API script was blocked or could not be downloaded. Check your internet connection, VPN, DNS filter, or ad blocker.");
+          }
         };
         document.head.appendChild(script);
       }
-
-      // The API may already have loaded before this component registered its callback.
-      // Polling closes that race and also handles an existing script tag.
-      poll = setInterval(() => {
-        if (window.YT?.Player) init();
-      }, 150);
+      apiTimeout = setTimeout(() => {
+        if (!cancelled && !window.YT?.Player) {
+          cleanupTimers();
+          setLoadError("Timed out loading YouTube's API. Check whether your network or an extension is blocking youtube.com.");
+        }
+      }, 12000);
+      poll = setInterval(() => { if (window.YT?.Player) init(); }, 150);
     }
 
-    return () => {
-      cancelled = true;
-      if (poll) clearInterval(poll);
-    };
+    return () => { cancelled = true; cleanupTimers(); };
   }, [host]);
 
   const api = useMemo(() => ({
