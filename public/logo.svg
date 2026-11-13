@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="420" height="96" viewBox="0 0 420 96" fill="none">
+  <defs>
+    <linearGradient id="sun" x1="20" y1="12" x2="72" y2="72" gradientUnits="userSpaceOnUse"><stop stop-color="#FFD36A"/><stop offset="1" stop-color="#F28B35"/></linearGradient>
+    <linearGradient id="wave" x1="10" y1="42" x2="88" y2="42" gradientUnits="userSpaceOnUse"><stop stop-color="#F28B35"/><stop offset="1" stop-color="#FFD36A"/></linearGradient>
+  </defs>
+  <g transform="translate(4 5)">
+    <path d="M14 50a32 32 0 0 1 64 0" stroke="#F4B34E" stroke-width="7" stroke-linecap="round"/>
+    <path d="M25 49a21 21 0 0 1 42 0" stroke="url(#sun)" stroke-width="5" stroke-linecap="round"/>
+    <path d="M31 44a15 15 0 0 1 30 0v7H31v-7Z" fill="url(#sun)"/>
+    <rect x="9" y="43" width="12" height="25" rx="6" fill="#F28B35"/>
+    <rect x="71" y="43" width="12" height="25" rx="6" fill="#F28B35"/>
+    <path d="M2 78h10l5-9 6 14 7-20 7 15h8l5-10 5 10h9l6-14 6 14h8" stroke="url(#wave)" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <text x="108" y="46" fill="#F4F7FB" font-family="Arial,Helvetica,sans-serif" font-size="34" font-weight="800" letter-spacing="-1.2">Morning<tspan fill="#F3A744">Tunes</tspan></text>
+  <text x="110" y="69" fill="#AAB8C9" font-family="Arial,Helvetica,sans-serif" font-size="11" font-weight="600" letter-spacing="2.4">WAKE UP TO YOUR MUSIC</text>
+</svg>
