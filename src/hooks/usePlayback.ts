@@ -3,7 +3,6 @@ import { RefObject, useEffect, useRef, useState } from "react";
 import type { Settings, Song } from "@/lib/types";
 import { getPlaylistId } from "@/lib/youtube";
 import { shuffled } from "@/lib/shuffle";
-import { SILENT_WAV } from "@/lib/silent";
 import { useYouTubePlayer } from "./useYouTubePlayer";
 
 const WATCHDOG_MS = 15000; // alarm with no sound after this long -> fallback beep
@@ -82,7 +81,7 @@ export function usePlayback(settings: Settings, host: RefObject<HTMLDivElement |
 
   const finish = (msg: string) => {
     clearFade(); clearWatchdog(); stopBeep(); api.stop();
-    active.current = false; isAlarm.current = false; pendingStart.current = false; engine.current = null;
+    active.current = false; isAlarm.current = false; pendingStart.current = false;
     setStatus(msg); setPlayingTitle("Nothing playing");
   };
   const stop = () => finish("Playback stopped");
@@ -107,20 +106,20 @@ export function usePlayback(settings: Settings, host: RefObject<HTMLDivElement |
     if (s.endBehaviour === "repeat") { if (s.musicSource === "songs") playIndex(0); else start(isAlarm.current); return; }
     if (s.endBehaviour === "next" && !switchedToNext.current) {
       const id = getPlaylistId(s.nextPlaylistUrl);
-      if (id) { switchedToNext.current = true; stopAudio(); engine.current = "yt"; api.loadPlaylist(id); setPlayingTitle("Next playlist"); setStatus("Playing next playlist"); return; }
+      if (id) { switchedToNext.current = true; api.loadPlaylist(id); setPlayingTitle("Next playlist"); setStatus("Playing next playlist"); return; }
       setStatus("Next playlist URL is invalid");
     }
     finish("Finished");
   };
   const advance = () => { if (active.current) playIndex(index.current + 1); };
   const onYtState = (s: number) => {
-    if (!active.current || false) return;
+    if (!active.current) return;
     if (s === 1) onPlaying();
     else if (s === 2) setStatus("Paused");
     else if (s === 0) { if (settingsRef.current.musicSource === "songs") advance(); else handleEnd(); }
   };
   const onYtError = (code: number) => {
-    if (!active.current || engine.current !== "yt") return;
+    if (!active.current) return;
     setStatus(`Video unavailable (error ${code}), skipping`);
     if (settingsRef.current.musicSource === "songs") skipFailed();
     else if (++skips.current > 50) { if (isAlarm.current) startBeep("Nothing in the playlist could be played"); } else api.next();
@@ -164,7 +163,7 @@ export function usePlayback(settings: Settings, host: RefObject<HTMLDivElement |
   useEffect(() => { // alarm fired before the YouTube player finished loading
     if (ready) { setStatus((p) => (p === "Player is loading" ? "Player ready" : p)); if (pendingStart.current) startRef.current(isAlarm.current); }
   }, [ready]);
-  useEffect(() => () => { clearFade(); clearWatchdog(); stopBeep(); stopAudio(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => () => { clearFade(); clearWatchdog(); stopBeep(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   return { ready, status, playingTitle, fallback, start, stop, unlock };
 }
