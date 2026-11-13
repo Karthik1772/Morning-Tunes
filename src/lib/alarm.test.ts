@@ -30,16 +30,28 @@ test("bad time or timezone never fires or throws", () => {
   assert.equal(shouldFire({ ...base, alarmTime: "25:99" }, at("00:30"), "").fire, false);
   assert.equal(shouldFire({ ...base, timezone: "Nope/Zone" }, at("00:30"), "").fire, false);
 });
-test("normalizeSettings migrates v1 songs and drops junk", () => {
-  const s = normalizeSettings({ volume: 999, alarmTime: "bad", songs: [{ id: "a", videoId: "dQw4w9WgXcQ", title: "x", url: "u" }, { id: "b", kind: "youtube", videoId: "short" }, { id: "c", kind: "local", title: "mp3" }], evil: 1 });
+test("normalizes only valid individually saved YouTube videos", () => {
+  const s = normalizeSettings({
+    volume: 999, alarmTime: "bad",
+    songs: [
+      { id: "a", videoId: "dQw4w9WgXcQ", title: "Song A", url: "u" },
+      { id: "b", kind: "youtube", videoId: "short", title: "invalid" },
+      { id: "c", kind: "local", title: "local audio", videoId: "dQw4w9WgXcQ" },
+    ],
+    musicSource: "playlist", playlistUrl: "https://youtube.com/playlist?list=abc", nextPlaylistUrl: "https://youtube.com/playlist?list=def",
+    evil: 1,
+  });
   assert.equal(s.volume, 100);
   assert.equal(s.alarmTime, DEFAULT_SETTINGS.alarmTime);
-  assert.deepEqual(s.songs.map((x) => [x.id, x.kind]), [["a", "youtube"], ["c", "local"]]);
+  assert.deepEqual(s.songs.map((x) => [x.id, x.kind]), [["a", "youtube"], ["c", "youtube"]]);
+  assert.equal("musicSource" in s, false);
+  assert.equal("playlistUrl" in s, false);
+  assert.equal("nextPlaylistUrl" in s, false);
   assert.equal("evil" in s, false);
+  assert.equal(DEFAULT_SETTINGS.songs.length, 0);
 });
-test("playOn defaults to browser, accepts agent, rejects junk", () => {
-  assert.equal(normalizeSettings({}).playOn, "browser");
-  assert.equal(normalizeSettings({ playOn: "agent" }).playOn, "agent");
-  assert.equal(normalizeSettings({ playOn: "rm -rf" }).playOn, "browser");
-  assert.equal(DEFAULT_SETTINGS.playOn, "browser");
+test("legacy playlist settings are ignored and default to an empty song queue", () => {
+  const s = normalizeSettings({ musicSource: "playlist", playlistUrl: "https://youtube.com/playlist?list=abc" });
+  assert.deepEqual(s.songs, []);
+  assert.equal("playlistUrl" in s, false);
 });
