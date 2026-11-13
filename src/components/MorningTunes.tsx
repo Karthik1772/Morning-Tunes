@@ -1,82 +1,122 @@
 "use client";
-
 import { useCallback, useEffect, useRef, useState } from "react";
-import { AlarmClock, AudioLines, Bluetooth, ChevronDown, ChevronUp, CircleHelp, ListMusic, Music2, Pause, Play, Plus, Radio, Settings2, Sun, Trash2, Youtube } from "lucide-react";
-import { DEFAULT_SETTINGS, STORAGE_KEY, type Settings, type Song } from "@/lib/types";
-import { getPlaylistId, getVideoId, youtubeUrl } from "@/lib/youtube";
+import { AlertTriangle, AudioLines, Bluetooth, ListMusic, Music2, Pause, Play, Settings2, ShieldCheck, Sun } from "lucide-react";
+import { useSettings } from "@/hooks/useSettings";
+import { usePlayback } from "@/hooks/usePlayback";
+import { useAlarm } from "@/hooks/useAlarm";
+import { listFileIds } from "@/lib/localFiles";
+import LibraryTab from "./LibraryTab";
+import SettingsTab from "./SettingsTab";
 
-declare global { interface Window { YT?: any; onYouTubeIframeAPIReady?: () => void } }
+const ago = (ms: number) => { const s = Math.max(0, Math.round(ms / 1000)); return s < 90 ? `${s}s ago` : s < 5400 ? `${Math.round(s / 60)} min ago` : `${Math.round(s / 3600)} h ago`; };
 
 export default function MorningTunes() {
-  const [settings,setSettings] = useState<Settings>(DEFAULT_SETTINGS);
-  const [ready,setReady] = useState(false);
-  const [playerReady,setPlayerReady] = useState(false);
-  const [now,setNow] = useState(new Date());
-  const [tab,setTab] = useState<"overview"|"library"|"settings">("overview");
-  const [url,setUrl] = useState("");
-  const [title,setTitle] = useState("");
-  const [status,setStatus] = useState("Player is loading");
-  const [playingTitle,setPlayingTitle] = useState("Nothing playing");
-  const [alarmNotice,setAlarmNotice] = useState("Enable the alarm to arm this browser.");
-  const player = useRef<any>(null);
-  const playerHost = useRef<HTMLDivElement>(null);
-  const settingsRef = useRef(settings);
-  const queueRef = useRef<Song[]>([]);
-  const queueIndex = useRef(0);
-  const lastAlarm = useRef("");
-  const fadeTimer = useRef<ReturnType<typeof setInterval>|null>(null);
+  const [armed, setArmed] = useState(false); // this tab has had a click, so the browser allows sound
+  const { ready, settings, patch, device, patchDevice, passcode, setPasscode, sync, heartbeat, syncNow, reset } = useSettings(armed);
+  const [tab, setTab] = useState<"library" | "settings">("library");
+  const [now, setNow] = useState(new Date());
+  const [localIds, setLocalIds] = useState<Set<string>>(new Set());
+  const playerHost = useRef<HTMLDivElement>(null); // always mounted, so switching tabs never destroys the player
+  const pb = usePlayback(settings, playerHost);
+  const alarmNotice = useAlarm(settings, ready, () => pb.start(true));
 
-  useEffect(()=>{ try { const raw=localStorage.getItem(STORAGE_KEY); if(raw) setSettings({...DEFAULT_SETTINGS,...JSON.parse(raw)}); } catch {} setReady(true); },[]);
-  useEffect(()=>{ if(!ready)return; settingsRef.current=settings; queueRef.current=settings.songs; localStorage.setItem(STORAGE_KEY,JSON.stringify(settings)); },[settings,ready]);
-  useEffect(()=>{ const t=setInterval(()=>setNow(new Date()),1000); return ()=>clearInterval(t); },[]);
+  const refreshLocal = useCallback(async () => { try { setLocalIds(new Set(await listFileIds())); } catch {} }, []);
+  useEffect(() => { void refreshLocal(); }, [refreshLocal]);
+  useEffect(() => { const t = setInterval(() => setNow(new Date()), 1000); return () => clearInterval(t); }, []);
 
-  const stopFade=useCallback(()=>{ if(fadeTimer.current) clearInterval(fadeTimer.current); fadeTimer.current=null; },[]);
-  const fadeTo=useCallback((target:number)=>{ stopFade(); const p=player.current; if(!p)return; if(!settingsRef.current.fadeIn){p.setVolume(target);return;} p.setVolume(0); let v=0; fadeTimer.current=setInterval(()=>{v=Math.min(target,v+5);p.setVolume(v);if(v>=target)stopFade();},1200); },[stopFade]);
+  const arm = async () => { await pb.unlock(); setArmed(true); };
+  const toggleEnabled = (on: boolean) => { patch({ enabled: on }); if (on) void arm(); };
+  const test = async () => { await arm(); pb.start(false); };
 
-  const playQueueItem=useCallback((idx:number)=>{
-    const p=player.current; const q=queueRef.current; if(!p||!q.length)return;
-    if(idx>=q.length){ const b=settingsRef.current.endBehaviour; if(b==="repeat")idx=0; else if(b==="next"&&settingsRef.current.nextPlaylistUrl){const id=getPlaylistId(settingsRef.current.nextPlaylistUrl);if(id){p.loadPlaylist({listType:"playlist",list:id,index:0});setPlayingTitle("Next playlist");setStatus("Playing next playlist");return;}setStatus("Next playlist URL is invalid");return;} else {p.stopVideo();setStatus("Queue finished");setPlayingTitle("Nothing playing");return;} }
-    queueIndex.current=idx; const song=q[idx]; p.loadVideoById(song.videoId); fadeTo(settingsRef.current.volume); setPlayingTitle(song.title); setStatus(`Playing ${idx+1} of ${q.length}`);
-  },[fadeTo]);
+  if (!ready) return <main className="shell"><p className="muted">Loading MorningTunes…</p></main>;
+  const time = new Intl.DateTimeFormat("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true, timeZone: settings.timezone }).format(now);
+  const playerSeen = heartbeat && now.getTime() - heartbeat.at < 120000;
 
-  const play=useCallback(()=>{
-    const p=player.current; const s=settingsRef.current; if(!p){setStatus("Player is still loading");return;}
-    if(s.musicSource==="songs"){
-      if(!s.songs.length){setStatus("Add at least one individual YouTube song first");return;}
-      const q=s.shuffle?[...s.songs].sort(()=>Math.random()-.5):[...s.songs]; queueRef.current=q; playQueueItem(0);
-    } else {
-      const id=getPlaylistId(s.playlistUrl); if(!id){setStatus("Enter a valid YouTube playlist URL");return;}
-      p.loadPlaylist({listType:"playlist",list:id,index:0}); p.setShuffle(!!s.shuffle); fadeTo(s.volume); setPlayingTitle("Your YouTube playlist");setStatus("Playing YouTube playlist");
-    }
-  },[fadeTo,playQueueItem]);
+  return (
+    <main className="shell">
+      <header className="flex flex-wrap items-center justify-between gap-4 mb-9">
+        <div className="flex items-center gap-3">
+          <div className="h-11 w-11 rounded-2xl bg-amber-400/15 text-amber-300 flex items-center justify-center"><AudioLines size={23} /></div>
+          <div><div className="font-bold text-xl" style={{ fontFamily: "Manrope" }}>MorningTunes</div><div className="text-xs muted">A better way to wake up</div></div>
+        </div>
+        <div className="text-xs muted flex items-center gap-2"><span className={`h-2 w-2 rounded-full ${pb.ready ? "bg-emerald-400" : "bg-amber-400"}`} />{pb.ready ? "Player ready" : "Connecting player"} · {time}</div>
+      </header>
 
-  const stop=()=>{stopFade();player.current?.stopVideo();setStatus("Playback stopped");setPlayingTitle("Nothing playing");};
-  useEffect(()=>{
-    if(!ready||!playerHost.current)return; let cancelled=false;
-    const init=()=>{if(cancelled||!window.YT?.Player||player.current)return;player.current=new window.YT.Player(playerHost.current,{height:"180",width:"320",playerVars:{playsinline:1,controls:1,rel:0,enablejsapi:1},events:{onReady:(e:any)=>{setPlayerReady(true);e.target.setVolume(settingsRef.current.volume);},onStateChange:(e:any)=>{const Y=window.YT;if(e.data===Y.PlayerState.PLAYING)setStatus("Playing");if(e.data===Y.PlayerState.PAUSED)setStatus("Paused");if(e.data===Y.PlayerState.ENDED){if(settingsRef.current.musicSource==="songs")playQueueItem(queueIndex.current+1);else if(settingsRef.current.endBehaviour==="repeat")play();else if(settingsRef.current.endBehaviour==="next"&&settingsRef.current.nextPlaylistUrl){const id=getPlaylistId(settingsRef.current.nextPlaylistUrl);if(id){player.current.loadPlaylist({listType:"playlist",list:id,index:0});setStatus("Playing next playlist");}else setStatus("Next playlist URL is invalid");}else{setStatus("Playlist finished");setPlayingTitle("Nothing playing");}}},onError:()=>setStatus("This video cannot be embedded or played. Try another video.")}});};
-    if(window.YT?.Player)init();else{let script=document.querySelector<HTMLScriptElement>('script[src="https://www.youtube.com/iframe_api"]');if(!script){script=document.createElement("script");script.src="https://www.youtube.com/iframe_api";document.head.appendChild(script);}const previous=window.onYouTubeIframeAPIReady;window.onYouTubeIframeAPIReady=()=>{previous?.();init();};}
-    return()=>{cancelled=true;stopFade();};
-  },[ready,play,playQueueItem,stopFade]);
+      {settings.enabled && !armed && (
+        <div className="mb-5 rounded-2xl border border-amber-400/30 bg-amber-400/10 p-4 flex flex-wrap items-center justify-between gap-3" role="alert">
+          <div className="flex items-center gap-3 text-sm text-amber-100"><AlertTriangle size={18} className="shrink-0" /> The alarm is on, but this tab hasn&apos;t been armed. Browsers block sound until you click once on the page.</div>
+          <button className="btn btn-primary" onClick={() => void arm()}><ShieldCheck size={16} /> Arm this device</button>
+        </div>
+      )}
 
-  useEffect(()=>{
-    if(!ready)return;
-    const check=()=>{const s=settingsRef.current;if(!s.enabled)return;const parts=new Intl.DateTimeFormat("en-US",{timeZone:s.timezone,year:"numeric",month:"2-digit",day:"2-digit",weekday:"short",hour:"2-digit",minute:"2-digit",hourCycle:"h23"}).formatToParts(new Date());const get=(k:string)=>parts.find(x=>x.type===k)?.value??"";const key=`${get("year")}-${get("month")}-${get("day")}`;const day=({Sun:0,Mon:1,Tue:2,Wed:3,Thu:4,Fri:5,Sat:6} as Record<string,number>)[get("weekday")]??-1;const allowed=s.schedule==="daily"||(s.schedule==="weekdays"&&day>=1&&day<=5)||(s.schedule==="weekends"&&(day===0||day===6))||(s.schedule==="custom"&&s.customDays.includes(day));const minute=Number(get("hour"))*60+Number(get("minute"));const [h,m]=s.alarmTime.split(":").map(Number);const target=h*60+m;if(allowed&&minute===target&&lastAlarm.current!==key){lastAlarm.current=key;setAlarmNotice(`Alarm triggered at ${s.alarmTime} · ${s.timezone}`);play();}};
-    const t=setInterval(check,1000);return()=>clearInterval(t);
-  },[ready,play]);
+      <section className="grid lg:grid-cols-[1.35fr_.85fr] gap-5 mb-6">
+        <div className="rounded-3xl p-8 relative overflow-hidden" style={{ background: "linear-gradient(120deg,#25364a,#172438 65%,#382c24)" }}>
+          <div className="absolute -right-8 -top-12 opacity-10"><Sun size={220} /></div>
+          <div className="relative">
+            <div className="eyebrow mb-3">Your morning, on your terms</div>
+            <div className="text-5xl md:text-6xl font-extrabold mb-2" style={{ fontFamily: "Manrope" }}>{time}</div>
+            <p className="text-sm text-slate-300 mb-7">{settings.timezone}</p>
+            <div className="flex flex-wrap gap-3">
+              <button className="btn btn-primary" onClick={() => void test()}><Play size={16} /> Test playback</button>
+              <button className="btn btn-secondary" onClick={pb.stop}><Pause size={16} /> Stop</button>
+            </div>
+          </div>
+        </div>
+        <div className="panel p-6 flex flex-col justify-between">
+          <div>
+            <div className="eyebrow mb-2">Next alarm</div>
+            <div className="text-4xl font-bold" style={{ fontFamily: "Manrope" }}>{settings.alarmTime}</div>
+            <div className="text-sm muted mt-1 capitalize">{settings.schedule}</div>
+          </div>
+          <div className="mt-6 pt-5 border-t border-slate-700 space-y-3">
+            <div className="flex items-center justify-between">
+              <div><div className="text-sm font-semibold">Alarm enabled</div>
+                <div className="text-xs muted">{!settings.enabled ? "Turn on to schedule playback" : armed ? "This browser is armed" : "Not armed yet"}</div></div>
+              <input aria-label="Enable alarm" className="switch" type="checkbox" checked={settings.enabled} onChange={(e) => toggleEnabled(e.target.checked)} />
+            </div>
+            {passcode && !armed && (
+              <div className={`text-xs ${playerSeen && heartbeat?.armed ? "text-emerald-300" : "text-amber-200"}`}>
+                {heartbeat ? (playerSeen && heartbeat.armed ? `Player online and armed · seen ${ago(now.getTime() - heartbeat.at)}` : `Player last seen ${ago(now.getTime() - heartbeat.at)}. It may be asleep or closed`) : "No player has checked in yet"}
+              </div>
+            )}
+          </div>
+        </div>
+      </section>
 
-  const patch=(p:Partial<Settings>)=>setSettings(s=>({...s,...p}));
-  const addSong=()=>{const id=getVideoId(url);if(!id){setStatus("Enter a valid YouTube video URL");return;}const song:Song={id:crypto.randomUUID(),videoId:id,title:title.trim()||`Song ${settings.songs.length+1}`,url:youtubeUrl(id)};patch({songs:[...settings.songs,song]});setUrl("");setTitle("");};
-  const moveSong=(i:number,d:number)=>{const a=[...settings.songs],j=i+d;if(j<0||j>=a.length)return;[a[i],a[j]]=[a[j],a[i]];patch({songs:a});};
-  const time=new Intl.DateTimeFormat("en-IN",{hour:"2-digit",minute:"2-digit",hour12:true,timeZone:settings.timezone}).format(now);
-  if(!ready)return <main className="shell"><p className="muted">Loading MorningTunes…</p></main>;
+      <section className="grid lg:grid-cols-[1fr_330px] gap-5 mb-6">
+        <div className="panel p-6">
+          <div className="flex items-center justify-between mb-5">
+            <div><div className="eyebrow mb-1">Now playing</div><h2 className="text-xl font-bold">{pb.playingTitle}</h2>
+              <p className="text-xs muted mt-1" role="status">{pb.status}</p></div>
+            <Music2 className={pb.fallback ? "text-rose-300" : "text-amber-300"} />
+          </div>
+          <div className="rounded-xl overflow-hidden bg-black/30 min-h-[180px] flex items-center justify-center"><div ref={playerHost} /></div>
+          {alarmNotice && <p className="text-xs muted mt-3">{alarmNotice}</p>}
+          <div className="text-xs muted mt-4 flex items-center gap-2"><Bluetooth size={14} /> Pair your speaker in your device Bluetooth settings</div>
+        </div>
+        <div className="panel p-6">
+          <div className="eyebrow mb-4">Alarm snapshot</div>
+          <div className="space-y-4 text-sm">
+            <div><span className="muted">Music source</span><div className="font-semibold">{settings.musicSource === "playlist" ? "YouTube playlist" : `Song queue (${settings.songs.length})`}</div></div>
+            <div><span className="muted">After last song</span><div className="font-semibold capitalize">{settings.endBehaviour}</div></div>
+            <div><span className="muted">Shuffle</span><div className="font-semibold">{settings.shuffle ? "On" : "Off"}</div></div>
+            <div><span className="muted">Volume</span><div className="font-semibold">{settings.volume}% · Fade {settings.fadeIn ? "on" : "off"}</div></div>
+          </div>
+        </div>
+      </section>
 
-  return <main className="shell">
-    <header className="flex flex-wrap items-center justify-between gap-4 mb-9"><div className="flex items-center gap-3"><div className="h-11 w-11 rounded-2xl bg-amber-400/15 text-amber-300 flex items-center justify-center"><AudioLines size={23}/></div><div><div className="font-bold text-xl" style={{fontFamily:"Manrope"}}>MorningTunes</div><div className="text-xs muted">A better way to wake up</div></div></div><div className="text-xs muted flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-emerald-400"/>{playerReady?"Player ready":"Connecting player"} · {time}</div></header>
-    <section className="grid lg:grid-cols-[1.35fr_.85fr] gap-5 mb-6"><div className="rounded-3xl p-8 relative overflow-hidden" style={{background:"linear-gradient(120deg,#25364a,#172438 65%,#382c24)"}}><div className="absolute -right-8 -top-12 opacity-10"><Sun size={220}/></div><div className="relative"><div className="eyebrow mb-3">Your morning, on your terms</div><div className="text-5xl md:text-6xl font-extrabold mb-2" style={{fontFamily:"Manrope"}}>{time}</div><p className="text-sm text-slate-300 mb-7">{settings.timezone}</p><div className="flex flex-wrap gap-3"><button className="btn btn-primary" onClick={play} disabled={!playerReady}><Play size={16}/> Test playback</button><button className="btn btn-secondary" onClick={stop}><Pause size={16}/> Stop</button></div></div></div><div className="panel p-6 flex flex-col justify-between"><div><div className="eyebrow mb-2">Next alarm</div><div className="text-4xl font-bold" style={{fontFamily:"Manrope"}}>{settings.alarmTime}</div><div className="text-sm muted mt-1 capitalize">{settings.schedule}</div></div><div className="mt-6 pt-5 border-t border-slate-700 flex items-center justify-between"><div><div className="text-sm font-semibold">Alarm enabled</div><div className="text-xs muted">{settings.enabled?"This browser is armed":"Turn on to schedule playback"}</div></div><input aria-label="Enable alarm" className="switch" type="checkbox" checked={settings.enabled} onChange={e=>patch({enabled:e.target.checked})}/></div></div></section>
-    <nav className="flex gap-2 mb-5">{(["overview","library","settings"] as const).map(t=><button key={t} onClick={()=>setTab(t)} className={`btn ${tab===t?"btn-primary":"btn-secondary"} capitalize`}>{t==="overview"?<Radio size={15}/>:t==="library"?<ListMusic size={15}/>:<Settings2 size={15}/>} {t}</button>)}</nav>
-    {tab==="overview"&&<section className="grid lg:grid-cols-[1fr_330px] gap-5"><div className="panel p-6"><div className="flex items-center justify-between mb-5"><div><div className="eyebrow mb-1">Now playing</div><h2 className="text-xl font-bold">{playingTitle}</h2><p className="text-xs muted mt-1">{status}</p></div><Music2 className="text-amber-300"/></div><div className="rounded-xl overflow-hidden bg-black/30 min-h-[180px] flex items-center justify-center"><div ref={playerHost}/></div><div className="text-xs muted mt-4 flex items-center gap-2"><Bluetooth size={14}/> Pair your speaker in your device Bluetooth settings</div></div><div className="panel p-6"><div className="eyebrow mb-4">Alarm snapshot</div><div className="space-y-4 text-sm"><div><span className="muted">Music source</span><div className="font-semibold">{settings.musicSource==="playlist"?"YouTube playlist":"Individual songs"}</div></div><div><span className="muted">After last song</span><div className="font-semibold">{settings.endBehaviour}</div></div><div><span className="muted">Shuffle</span><div className="font-semibold">{settings.shuffle?"On":"Off"}</div></div><div><span className="muted">Volume</span><div className="font-semibold">{settings.volume}% · Fade {settings.fadeIn?"on":"off"}</div></div><button className="btn btn-secondary w-full" onClick={()=>setTab("settings")}>Manage settings <ChevronDown size={14}/></button></div></div></section>}
-    {tab==="library"&&<section className="panel p-6"><div className="eyebrow mb-1">Your music</div><h2 className="text-xl font-bold mb-5">Music library</h2><label className="label">Playback source</label><div className="flex gap-2 mb-5"><button className={`btn ${settings.musicSource==="playlist"?"btn-primary":"btn-secondary"}`} onClick={()=>patch({musicSource:"playlist"})}><ListMusic size={15}/> YouTube playlist</button><button className={`btn ${settings.musicSource==="songs"?"btn-primary":"btn-secondary"}`} onClick={()=>patch({musicSource:"songs"})}><Youtube size={15}/> Individual songs</button></div><div className="grid md:grid-cols-2 gap-4 mb-6"><div><label className="label">YouTube playlist URL</label><input className="field" value={settings.playlistUrl} onChange={e=>patch({playlistUrl:e.target.value})}/></div><div className="flex items-end"><a className="btn btn-secondary w-full" href={settings.playlistUrl} target="_blank" rel="noreferrer"><Youtube size={16}/> Open playlist</a></div></div><div className="border-t border-slate-700 pt-5"><h3 className="font-semibold mb-3">Add individual songs</h3><div className="grid md:grid-cols-[1fr_1.4fr_auto] gap-2"><input className="field" value={title} onChange={e=>setTitle(e.target.value)} placeholder="Song title (optional)"/><input className="field" value={url} onChange={e=>setUrl(e.target.value)} placeholder="Paste YouTube video URL"/><button className="btn btn-primary" onClick={addSong}><Plus size={15}/> Add song</button></div></div><div className="mt-6 space-y-2">{settings.songs.length===0?<p className="muted text-sm py-6 text-center">No individual songs yet.</p>:settings.songs.map((s,i)=><div key={s.id} className="flex items-center gap-3 p-3 rounded-xl bg-slate-900/60 border border-slate-800"><Youtube size={17} className="text-red-400"/><div className="flex-1 min-w-0"><div className="text-sm font-semibold truncate">{s.title}</div><a className="text-xs muted" href={s.url} target="_blank" rel="noreferrer">Open video</a></div><span className="text-xs muted">#{i+1}</span><button aria-label="Move up" onClick={()=>moveSong(i,-1)}><ChevronUp size={17}/></button><button aria-label="Move down" onClick={()=>moveSong(i,1)}><ChevronDown size={17}/></button><button aria-label="Remove song" onClick={()=>patch({songs:settings.songs.filter(x=>x.id!==s.id)})}><Trash2 size={16} className="text-rose-300"/></button></div>)}</div><p className="text-xs muted mt-5">Select the source above to choose which collection the alarm plays.</p></section>}
-    {tab==="settings"&&<section className="grid lg:grid-cols-2 gap-5"><div className="panel p-6 space-y-5"><div><div className="eyebrow mb-1">Alarm configuration</div><h2 className="text-xl font-bold">When should we wake you?</h2></div><div><label className="label">Alarm time</label><input className="field" type="time" value={settings.alarmTime} onChange={e=>patch({alarmTime:e.target.value})}/></div><div><label className="label">Repeat schedule</label><select className="field" value={settings.schedule} onChange={e=>patch({schedule:e.target.value as Settings["schedule"]})}><option value="daily">Every day</option><option value="weekdays">Weekdays</option><option value="weekends">Weekends</option><option value="custom">Custom days</option></select></div>{settings.schedule==="custom"&&<div><label className="label">Choose days</label><div className="flex flex-wrap gap-2">{["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].map((d,i)=><button key={d} onClick={()=>patch({customDays:settings.customDays.includes(i)?settings.customDays.filter(x=>x!==i):[...settings.customDays,i]})} className={`btn ${settings.customDays.includes(i)?"btn-primary":"btn-secondary"}`}>{d}</button>)}</div></div>}<div className="flex justify-between items-center"><div><div className="text-sm font-semibold">Enable alarm</div><div className="text-xs muted">Keep this dashboard open</div></div><input className="switch" type="checkbox" checked={settings.enabled} onChange={e=>patch({enabled:e.target.checked})}/></div><div className="rounded-xl bg-amber-400/10 border border-amber-400/20 p-3 text-xs text-amber-100 flex gap-2"><CircleHelp size={16}/> Browser alarms run only while this page is open and device is awake.</div></div><div className="panel p-6 space-y-5"><div><div className="eyebrow mb-1">Playback preferences</div><h2 className="text-xl font-bold">Make it yours</h2></div><div><label className="label">After the last song</label><select className="field" value={settings.endBehaviour} onChange={e=>patch({endBehaviour:e.target.value as Settings["endBehaviour"]})}><option value="stop">Stop playback</option><option value="repeat">Restart playlist</option><option value="next">Switch to another playlist</option></select></div>{settings.endBehaviour==="next"&&<div><label className="label">Next playlist URL</label><input className="field" value={settings.nextPlaylistUrl} onChange={e=>patch({nextPlaylistUrl:e.target.value})}/></div>}<div className="flex justify-between items-center"><div><div className="text-sm font-semibold">Shuffle</div><div className="text-xs muted">Randomize individual-song queue</div></div><input className="switch" type="checkbox" checked={settings.shuffle} onChange={e=>patch({shuffle:e.target.checked})}/></div><div className="flex justify-between items-center"><div><div className="text-sm font-semibold">Gradual volume fade-in</div><div className="text-xs muted">Start quietly and rise to target</div></div><input className="switch" type="checkbox" checked={settings.fadeIn} onChange={e=>patch({fadeIn:e.target.checked})}/></div><div><div className="flex justify-between mb-2"><label className="label mb-0">Target volume</label><span className="text-sm font-semibold">{settings.volume}%</span></div><input className="w-full accent-amber-400" type="range" min="0" max="100" value={settings.volume} onChange={e=>patch({volume:Number(e.target.value)})}/></div><div><label className="label">Timezone</label><select className="field" value={settings.timezone} onChange={e=>patch({timezone:e.target.value})}><option value="Asia/Kolkata">India — Asia/Kolkata</option><option value="UTC">UTC</option><option value="America/New_York">New York</option><option value="Europe/London">London</option><option value="Asia/Singapore">Singapore</option></select></div><button className="btn btn-secondary w-full" onClick={()=>{localStorage.removeItem(STORAGE_KEY);setSettings(DEFAULT_SETTINGS);setStatus("Settings reset");}}>Reset to defaults</button></div></section>}
-    <div className="mt-7 text-xs muted flex flex-wrap justify-between gap-3"><span>MorningTunes · Settings save automatically in this browser</span><span className="flex items-center gap-2"><Bluetooth size={13}/> Pair your Bluetooth speaker in device settings</span></div>
-  </main>;
+      <nav className="flex gap-2 mb-5">
+        {(["library", "settings"] as const).map((t) => (
+          <button key={t} onClick={() => setTab(t)} className={`btn ${tab === t ? "btn-primary" : "btn-secondary"} capitalize`}>{t === "library" ? <ListMusic size={15} /> : <Settings2 size={15} />} {t}</button>
+        ))}
+      </nav>
+      {tab === "library" && <LibraryTab settings={settings} patch={patch} localIds={localIds} refreshLocal={refreshLocal} />}
+      {tab === "settings" && <SettingsTab settings={settings} patch={patch} device={device} patchDevice={patchDevice} passcode={passcode} setPasscode={setPasscode} sync={sync} syncNow={syncNow} reset={reset} onToggleEnabled={toggleEnabled} />}
+
+      <div className="mt-7 text-xs muted flex flex-wrap justify-between gap-3">
+        <span>MorningTunes · Settings save automatically in this browser{passcode ? " and sync across your devices" : ""}</span>
+        <span className="flex items-center gap-2"><Bluetooth size={13} /> Pair your Bluetooth speaker in device settings</span>
+      </div>
+    </main>
+  );
 }
