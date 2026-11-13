@@ -87,7 +87,6 @@ export default function SettingsTab({ settings, patch, onVolumeChange, passcode,
           <p className="text-sm muted mt-1">Pair your speaker in your device Bluetooth settings. MorningTunes uses the audio output selected by your operating system.</p>
         </div>
         <button className="btn btn-secondary" onClick={() => void testAudioOutput()}><Volume2 size={16} /> Test current audio output</button>
-        <p className="text-xs muted">No speaker name or MAC address is needed. A webpage cannot connect to Bluetooth by MAC address or detect the selected speaker.</p>
       </div>
 
       <div className="panel p-6 space-y-5 lg:col-span-2">
