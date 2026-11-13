@@ -18,6 +18,8 @@ export type Settings = {
   shuffle: boolean;
   fadeIn: boolean;
   volume: number;
+  /** When true the player runs at 100% so loudness is whatever the device volume is. */
+  followDeviceVolume: boolean;
   timezone: string;
   songs: Song[];
   updatedAt: number;
@@ -33,10 +35,16 @@ export const DEFAULT_SETTINGS: Settings = {
   shuffle: false,
   fadeIn: true,
   volume: 70,
+  followDeviceVolume: true,
   timezone: "Asia/Kolkata",
   songs: [],
   updatedAt: 0,
 };
+
+/** Volume the YouTube player should use. Browsers cannot read or set the OS volume, so "follow device" means 100% of it. */
+export const targetVolume = (
+  s: Pick<Settings, "volume" | "followDeviceVolume">,
+) => (s.followDeviceVolume ? 100 : s.volume);
 
 export const STORAGE_KEY = "morningtunes.settings.v1";
 export const PASSCODE_KEY = "morningtunes.passcode";
@@ -120,6 +128,7 @@ export function normalizeSettings(raw: unknown): Settings {
     shuffle: bool(r.shuffle, d.shuffle),
     fadeIn: bool(r.fadeIn, d.fadeIn),
     volume: vol,
+    followDeviceVolume: bool(r.followDeviceVolume, d.followDeviceVolume),
     timezone: isValidTimezone(tz) ? tz : d.timezone,
     songs,
     updatedAt:

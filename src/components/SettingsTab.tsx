@@ -253,7 +253,7 @@ export default function SettingsTab({
                   Gradual volume fade-in
                 </div>
                 <div className="text-xs muted">
-                  Controls YouTube playback volume, not system volume
+                  Ramps up to your device volume (or the cap below)
                 </div>
               </div>
               <input
@@ -266,19 +266,42 @@ export default function SettingsTab({
             </div>
           </div>
           <div className="space-y-5">
-            <div>
+            <div className="flex justify-between items-center">
+              <div>
+                <div className="text-sm font-semibold">
+                  Follow device volume
+                </div>
+                <div className="text-xs muted">
+                  Plays at full player level, so loudness is whatever your
+                  device volume is. Browsers cannot read or change the system
+                  volume, so use your device volume keys to adjust it.
+                </div>
+              </div>
+              <input
+                aria-label="Follow device volume"
+                className="switch"
+                type="checkbox"
+                checked={settings.followDeviceVolume}
+                onChange={(e) => {
+                  patch({ followDeviceVolume: e.target.checked });
+                  onVolumeChange(e.target.checked ? 100 : settings.volume);
+                }}
+              />
+            </div>
+            <div className={settings.followDeviceVolume ? "opacity-50" : ""}>
               <div className="flex justify-between mb-2">
-                <label className="label mb-0">YouTube volume</label>
+                <label className="label mb-0">Volume cap (% of device)</label>
                 <span className="text-sm font-semibold">
                   {settings.volume}%
                 </span>
               </div>
               <input
-                aria-label="Volume"
+                aria-label="Volume cap"
                 className="w-full accent-amber-400"
                 type="range"
                 min="0"
                 max="100"
+                disabled={settings.followDeviceVolume}
                 value={settings.volume}
                 onChange={(e) => {
                   const volume = Number(e.target.value);

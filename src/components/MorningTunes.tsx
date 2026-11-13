@@ -41,7 +41,7 @@ export default function MorningTunes() {
   const [now, setNow] = useState(new Date());
   const playerHost = useRef<HTMLDivElement>(null); // always mounted, so switching tabs never destroys the player
   const pb = usePlayback(settings, playerHost);
-  const alarmNotice = useAlarm(settings, ready, () => pb.start(true));
+  const alarmNotice = useAlarm(settings, ready, () => pb.start(true), armed);
   useEffect(() => {
     const t = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(t);
@@ -51,6 +51,20 @@ export default function MorningTunes() {
     await pb.unlock();
     setArmed(true);
   };
+  // After a reload the browser forgets it may play sound. Any first click or key press on the
+  // page counts, so the user never has to find the Test button again.
+  const armRef = useRef(arm);
+  armRef.current = arm;
+  useEffect(() => {
+    if (armed || !ready || !settings.enabled) return;
+    const once = () => void armRef.current();
+    window.addEventListener("pointerdown", once, { once: true });
+    window.addEventListener("keydown", once, { once: true });
+    return () => {
+      window.removeEventListener("pointerdown", once);
+      window.removeEventListener("keydown", once);
+    };
+  }, [armed, ready, settings.enabled]);
   const toggleEnabled = (on: boolean) => {
     patch({ enabled: on });
     if (on) void arm();
@@ -230,7 +244,10 @@ export default function MorningTunes() {
             <div>
               <span className="muted">Volume</span>
               <div className="font-semibold">
-                {settings.volume}% · Fade {settings.fadeIn ? "on" : "off"}
+                {settings.followDeviceVolume
+                  ? "Device volume"
+                  : `${settings.volume}% of device`}{" "}
+                · Fade {settings.fadeIn ? "on" : "off"}
               </div>
             </div>
           </div>

@@ -1,6 +1,6 @@
 "use client";
 import { RefObject, useEffect, useRef, useState } from "react";
-import type { Settings, Song } from "@/lib/types";
+import { targetVolume, type Settings, type Song } from "@/lib/types";
 import { shuffleItems } from "@/lib/shuffle";
 import { useYouTubePlayer } from "./useYouTubePlayer";
 
@@ -84,7 +84,7 @@ export function usePlayback(
     let v = 0;
     setVol(0);
     fadeTimer.current = setInterval(() => {
-      const latestTarget = settingsRef.current.volume;
+      const latestTarget = targetVolume(settingsRef.current);
       v = Math.min(latestTarget, v + 5);
       setVol(v);
       if (v >= latestTarget) clearFade();
@@ -102,7 +102,10 @@ export function usePlayback(
       const o = c.createOscillator(),
         g = c.createGain();
       o.frequency.value = 880;
-      g.gain.value = Math.max(0.05, (settingsRef.current.volume / 100) * 0.5);
+      g.gain.value = Math.max(
+        0.05,
+        (targetVolume(settingsRef.current) / 100) * 0.5,
+      );
       o.connect(g);
       g.connect(c.destination);
       o.start();
@@ -150,8 +153,8 @@ export function usePlayback(
     setPlayingTitle(song.title);
     setStatus(`Starting ${i + 1} of ${songs.length}`);
     api.loadVideo(song.videoId);
-    if (first) rampVolume(settingsRef.current.volume);
-    else setVol(settingsRef.current.volume);
+    if (first) rampVolume(targetVolume(settingsRef.current));
+    else setVol(targetVolume(settingsRef.current));
   };
   const skipFailed = () => {
     skips.current++;
@@ -276,8 +279,9 @@ export function usePlayback(
     if (loadError) setStatus(loadError);
   }, [loadError]);
   useEffect(() => {
-    if (active.current && !fadeTimer.current) api.setVolume(settings.volume);
-  }, [settings.volume, api]);
+    if (active.current && !fadeTimer.current)
+      api.setVolume(targetVolume(settings));
+  }, [settings.volume, settings.followDeviceVolume, api]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (ready) {
       setStatus((p) => (p === "Player is loading" ? "Player ready" : p));
