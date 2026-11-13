@@ -1,6 +1,15 @@
 node_modules
 .next
 out
+.env
 .env*.local
 .DS_Store
 *.tsbuildinfo
+
+# Windows agent (per-machine secrets/state)
+windows-agent/agent-config.json
+windows-agent/passcode.sec
+windows-agent/agent-state.json
+windows-agent/settings.cache.json
+windows-agent/*.log
+windows-agent/*.log.old

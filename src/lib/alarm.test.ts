@@ -37,3 +37,9 @@ test("normalizeSettings migrates v1 songs and drops junk", () => {
   assert.deepEqual(s.songs.map((x) => [x.id, x.kind]), [["a", "youtube"], ["c", "local"]]);
   assert.equal("evil" in s, false);
 });
+test("playOn defaults to browser, accepts agent, rejects junk", () => {
+  assert.equal(normalizeSettings({}).playOn, "browser");
+  assert.equal(normalizeSettings({ playOn: "agent" }).playOn, "agent");
+  assert.equal(normalizeSettings({ playOn: "rm -rf" }).playOn, "browser");
+  assert.equal(DEFAULT_SETTINGS.playOn, "browser");
+});

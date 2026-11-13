@@ -5,6 +5,8 @@ import { normalizeSettings, type Settings } from "@/lib/types";
 export const dynamic = "force-dynamic";
 const KEY_SETTINGS = "morningtunes:settings";
 const KEY_HEARTBEAT = "morningtunes:heartbeat";
+const KEY_AGENT = "morningtunes:agent";
+const AGENT_STATES = ["idle", "playing", "played", "skipped", "speaker-failed", "error"] as const;
 
 const cfg = () => ({
   url: process.env.UPSTASH_REDIS_REST_URL ?? process.env.KV_REST_API_URL,
@@ -32,8 +34,8 @@ const parse = (v: unknown) => { try { return typeof v === "string" ? JSON.parse(
 export async function GET(req: NextRequest) {
   const denied = guard(req); if (denied) return denied;
   try {
-    const [s, h] = await Promise.all([redis(["GET", KEY_SETTINGS]), redis(["GET", KEY_HEARTBEAT])]);
-    return NextResponse.json({ settings: parse(s), heartbeat: parse(h) });
+    const [s, h, a] = await Promise.all([redis(["GET", KEY_SETTINGS]), redis(["GET", KEY_HEARTBEAT]), redis(["GET", KEY_AGENT])]);
+    return NextResponse.json({ settings: parse(s), heartbeat: parse(h), agent: parse(a) });
   } catch { return NextResponse.json({ error: "storage_error" }, { status: 502 }); }
 }
 
@@ -51,11 +53,22 @@ export async function PUT(req: NextRequest) {
   } catch { return NextResponse.json({ error: "storage_error" }, { status: 502 }); }
 }
 
-/** Player heartbeat: lets the phone see that the laptop tab is alive and armed. */
+/**
+ * Check-ins. Browser tab: `{ armed }`. Windows agent: `{ source: "agent", state, detail }`.
+ * They use separate keys so one never overwrites the other.
+ */
 export async function POST(req: NextRequest) {
   const denied = guard(req); if (denied) return denied;
-  let armed = false;
-  try { armed = (await req.json())?.armed === true; } catch {}
-  try { await redis(["SET", KEY_HEARTBEAT, JSON.stringify({ at: Date.now(), armed })]); return NextResponse.json({ ok: true }); }
-  catch { return NextResponse.json({ error: "storage_error" }, { status: 502 }); }
+  let body: { armed?: unknown; source?: unknown; state?: unknown; detail?: unknown } = {};
+  try { body = await req.json(); } catch {}
+  try {
+    if (body.source === "agent") {
+      const state = (AGENT_STATES as readonly unknown[]).includes(body.state) ? body.state : "idle";
+      const detail = typeof body.detail === "string" ? body.detail.replace(/[\u0000-\u001f]/g, " ").slice(0, 200) : "";
+      await redis(["SET", KEY_AGENT, JSON.stringify({ at: Date.now(), state, detail })]);
+    } else {
+      await redis(["SET", KEY_HEARTBEAT, JSON.stringify({ at: Date.now(), armed: body.armed === true })]);
+    }
+    return NextResponse.json({ ok: true });
+  } catch { return NextResponse.json({ error: "storage_error" }, { status: 502 }); }
 }

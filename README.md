@@ -37,7 +37,15 @@ Optional. Without it, settings live only in each browser.
 
 Alarm settings and the song queue then sync (last change wins, within about 30 seconds). The phone also shows whether the laptop tab is online and armed. The API refuses all requests unless all three variables are set and the passcode matches. Speaker settings and local files stay per device.
 
-## Laptop wake-up guide (laptop sleeps overnight)
+## Windows agent (recommended for a sleeping laptop)
+
+Instead of keeping a browser tab open, install the small agent in [`windows-agent/`](windows-agent/README.md). It reads the
+same synced settings, **wakes the laptop with Task Scheduler**, reconnects the Bluetooth speaker and plays your playlist or
+song queue with mpv. Then set **Settings → Play the alarm on → Windows agent**. In that mode the browser tab never fires the
+alarm, so you can't get double playback, and the dashboard shows when the agent last checked in and what it did.
+Requires sync (Upstash + passcode). Full guide: [`windows-agent/README.md`](windows-agent/README.md).
+
+## Laptop wake-up guide (browser-tab mode) (laptop sleeps overnight)
 
 A sleeping laptop runs no code, so schedule a wake a couple of minutes before the alarm (examples for a 6:00 alarm). Leave the MorningTunes tab open and **armed** before you sleep the laptop, and have the speaker on and set to auto-connect (make it the default output device).
 

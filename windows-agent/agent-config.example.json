@@ -1,0 +1,14 @@
+{
+  "dashboardUrl": "https://YOUR-APP.vercel.app",
+  "speakerName": "JBL Flip 6",
+  "localMusicDir": "C:\\Users\\YourName\\Music",
+  "mpvPath": "",
+  "ytdlpPath": "",
+  "wakeLeadMinutes": 3,
+  "maxPlayMinutes": 60,
+  "connectRetries": 6,
+  "retryDelaySeconds": 10,
+  "fallbackToDefaultOutput": false,
+  "fallbackBeepMinutes": 5,
+  "sleepAfterPlayback": false
+}

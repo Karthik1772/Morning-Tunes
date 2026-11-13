@@ -12,25 +12,28 @@ const ago = (ms: number) => { const s = Math.max(0, Math.round(ms / 1000)); retu
 
 export default function MorningTunes() {
   const [armed, setArmed] = useState(false); // this tab has had a click, so the browser allows sound
-  const { ready, settings, patch, device, patchDevice, passcode, setPasscode, sync, heartbeat, syncNow, reset } = useSettings(armed);
+  const { ready, settings, patch, device, patchDevice, passcode, setPasscode, sync, heartbeat, agent, syncNow, reset } = useSettings(armed);
   const [tab, setTab] = useState<"library" | "settings">("library");
   const [now, setNow] = useState(new Date());
   const [localIds, setLocalIds] = useState<Set<string>>(new Set());
   const playerHost = useRef<HTMLDivElement>(null); // always mounted, so switching tabs never destroys the player
   const pb = usePlayback(settings, playerHost);
-  const alarmNotice = useAlarm(settings, ready, () => pb.start(true));
+  // In "agent" mode the Windows agent plays the alarm, so the browser must NOT also fire it (no double playback).
+  const alarmNotice = useAlarm(settings, ready && settings.playOn === "browser", () => pb.start(true));
 
   const refreshLocal = useCallback(async () => { try { setLocalIds(new Set(await listFileIds())); } catch {} }, []);
   useEffect(() => { void refreshLocal(); }, [refreshLocal]);
   useEffect(() => { const t = setInterval(() => setNow(new Date()), 1000); return () => clearInterval(t); }, []);
 
   const arm = async () => { await pb.unlock(); setArmed(true); };
-  const toggleEnabled = (on: boolean) => { patch({ enabled: on }); if (on) void arm(); };
+  const toggleEnabled = (on: boolean) => { patch({ enabled: on }); if (on && settings.playOn === "browser") void arm(); };
   const test = async () => { await arm(); pb.start(false); };
 
   if (!ready) return <main className="shell"><p className="muted">Loading MorningTunes…</p></main>;
   const time = new Intl.DateTimeFormat("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true, timeZone: settings.timezone }).format(now);
   const playerSeen = heartbeat && now.getTime() - heartbeat.at < 120000;
+  const agentFresh = !!agent && now.getTime() - agent.at < 25 * 60000; // the agent checks in every ~10 min
+  const agentOk = agentFresh && agent!.state !== "error" && agent!.state !== "speaker-failed";
 
   return (
     <main className="shell">
@@ -42,7 +45,7 @@ export default function MorningTunes() {
         <div className="text-xs muted flex items-center gap-2"><span className={`h-2 w-2 rounded-full ${pb.ready ? "bg-emerald-400" : "bg-amber-400"}`} />{pb.ready ? "Player ready" : "Connecting player"} · {time}</div>
       </header>
 
-      {settings.enabled && !armed && (
+      {settings.enabled && settings.playOn === "browser" && !armed && (
         <div className="mb-5 rounded-2xl border border-amber-400/30 bg-amber-400/10 p-4 flex flex-wrap items-center justify-between gap-3" role="alert">
           <div className="flex items-center gap-3 text-sm text-amber-100"><AlertTriangle size={18} className="shrink-0" /> The alarm is on, but this tab hasn&apos;t been armed. Browsers block sound until you click once on the page.</div>
           <button className="btn btn-primary" onClick={() => void arm()}><ShieldCheck size={16} /> Arm this device</button>
@@ -71,10 +74,15 @@ export default function MorningTunes() {
           <div className="mt-6 pt-5 border-t border-slate-700 space-y-3">
             <div className="flex items-center justify-between">
               <div><div className="text-sm font-semibold">Alarm enabled</div>
-                <div className="text-xs muted">{!settings.enabled ? "Turn on to schedule playback" : armed ? "This browser is armed" : "Not armed yet"}</div></div>
+                <div className="text-xs muted">{!settings.enabled ? "Turn on to schedule playback" : settings.playOn === "agent" ? "Played by the Windows agent" : armed ? "This browser is armed" : "Not armed yet"}</div></div>
               <input aria-label="Enable alarm" className="switch" type="checkbox" checked={settings.enabled} onChange={(e) => toggleEnabled(e.target.checked)} />
             </div>
-            {passcode && !armed && (
+            {passcode && settings.playOn === "agent" && (
+              <div className={`text-xs ${agentOk ? "text-emerald-300" : "text-amber-200"}`}>
+                {agent ? `Windows agent checked in ${ago(now.getTime() - agent.at)} · ${agent.detail || agent.state}${agentFresh ? "" : ". It may be off or asleep"}` : "The Windows agent hasn't checked in yet"}
+              </div>
+            )}
+            {passcode && !armed && settings.playOn === "browser" && (
               <div className={`text-xs ${playerSeen && heartbeat?.armed ? "text-emerald-300" : "text-amber-200"}`}>
                 {heartbeat ? (playerSeen && heartbeat.armed ? `Player online and armed · seen ${ago(now.getTime() - heartbeat.at)}` : `Player last seen ${ago(now.getTime() - heartbeat.at)}. It may be asleep or closed`) : "No player has checked in yet"}
               </div>
