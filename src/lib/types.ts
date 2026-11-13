@@ -37,7 +37,7 @@ export function isValidTimezone(tz: string): boolean {
 export function normalizeSong(v: unknown): Song | null {
   if (!isObj(v)) return null;
   const id = str(v.id, "", 64);
-  if (!id) return null;
+  if (!id || (v.kind !== undefined && v.kind !== "youtube")) return null;
   const title = str(v.title, "Song", 200) || "Song";
   const videoId = str(v.videoId, "", 20);
   if (!/^[\w-]{11}$/.test(videoId)) return null;
