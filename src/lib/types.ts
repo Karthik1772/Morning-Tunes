@@ -13,14 +13,12 @@ export type Settings = {
 /** Stays on each device: which speaker that device is paired with. */
 export type DeviceSettings = { speakerName: string; speakerMac: string; speakerVerified: boolean };
 export type Heartbeat = { at: number; armed: boolean };
-/** Last check-in from the Windows agent (see /windows-agent). */
-export type AgentStatus = { at: number; state: string; detail: string };
 
 export const DEFAULT_SETTINGS: Settings = {
   alarmTime: "06:00", schedule: "daily", customDays: [1, 2, 3, 4, 5, 6, 0], enabled: false,
   endBehaviour: "stop", shuffle: false, fadeIn: true, volume: 70, timezone: "Asia/Kolkata",
   musicSource: "playlist", playlistUrl: "https://www.youtube.com/playlist?list=PLBo2BExIwYMtr4a-TVwyNvbb1lvbN70jd",
-  songs: [], nextPlaylistUrl: "", playOn: "browser", updatedAt: 0,
+  songs: [], nextPlaylistUrl: "", updatedAt: 0,
 };
 export const DEFAULT_DEVICE: DeviceSettings = { speakerName: "", speakerMac: "", speakerVerified: false };
 
