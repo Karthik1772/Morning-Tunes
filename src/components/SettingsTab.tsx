@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { CircleHelp, RefreshCw, Volume2 } from "lucide-react";
+import { RefreshCw, Volume2 } from "lucide-react";
 import type { Settings } from "@/lib/types";
 import type { SyncState } from "@/hooks/useSettings";
 
@@ -66,10 +66,6 @@ export default function SettingsTab({ settings, patch, onVolumeChange, passcode,
           <div><div className="text-sm font-semibold">Enable alarm</div><div className="text-xs muted">Keep this page open and the device awake</div></div>
           <input aria-label="Enable alarm" className="switch" type="checkbox" checked={settings.enabled} onChange={(e) => onToggleEnabled(e.target.checked)} />
         </div>
-        <div className="rounded-xl bg-amber-400/10 border border-amber-400/20 p-3 text-xs text-amber-100 flex gap-2">
-          <CircleHelp size={16} className="shrink-0" />
-          After opening MorningTunes, click Test playback once to allow the browser to start audio later. Browsers require a user interaction and cannot guarantee alarms when the page is closed or the device sleeps.
-        </div>
       </div>
 
       <div className="panel p-6 space-y-4">
@@ -102,10 +98,10 @@ export default function SettingsTab({ settings, patch, onVolumeChange, passcode,
               <option value="stop">Stop after the last saved song</option><option value="repeat">Repeat saved song queue</option>
             </select></div>
             <div className="flex justify-between items-center"><div><div className="text-sm font-semibold">Shuffle</div><div className="text-xs muted">Randomize the saved song queue</div></div><input aria-label="Shuffle" className="switch" type="checkbox" checked={settings.shuffle} onChange={(e) => patch({ shuffle: e.target.checked })} /></div>
-            <div className="flex justify-between items-center"><div><div className="text-sm font-semibold">Gradual volume fade-in</div><div className="text-xs muted">Starts quietly when the alarm begins</div></div><input aria-label="Fade in" className="switch" type="checkbox" checked={settings.fadeIn} onChange={(e) => patch({ fadeIn: e.target.checked })} /></div>
+            <div className="flex justify-between items-center"><div><div className="text-sm font-semibold">Gradual volume fade-in</div><div className="text-xs muted">Controls YouTube playback volume, not system volume</div></div><input aria-label="Fade in" className="switch" type="checkbox" checked={settings.fadeIn} onChange={(e) => patch({ fadeIn: e.target.checked })} /></div>
           </div>
           <div className="space-y-5">
-            <div><div className="flex justify-between mb-2"><label className="label mb-0">Target volume</label><span className="text-sm font-semibold">{settings.volume}%</span></div>
+            <div><div className="flex justify-between mb-2"><label className="label mb-0">YouTube volume</label><span className="text-sm font-semibold">{settings.volume}%</span></div>
               <input aria-label="Volume" className="w-full accent-amber-400" type="range" min="0" max="100" value={settings.volume} onChange={(e) => { const volume = Number(e.target.value); patch({ volume }); onVolumeChange(volume); }} /></div>
             <div><label className="label">Timezone</label><select className="field" value={settings.timezone} onChange={(e) => patch({ timezone: e.target.value })}>
               <option value="Asia/Kolkata">India — Asia/Kolkata</option><option value="UTC">UTC</option><option value="America/New_York">New York</option><option value="Europe/London">London</option><option value="Asia/Singapore">Singapore</option>
