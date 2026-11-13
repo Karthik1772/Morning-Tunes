@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { ChevronDown, ChevronUp, Plus, Trash2, Youtube } from "lucide-react";
 import type { Settings, Song } from "@/lib/types";
-import { getVideoId } from "@/lib/youtube";
+import { extractYouTubeVideoId } from "@/lib/youtube";
 import { uid } from "@/lib/uid";
 
 type Props = { settings: Settings; patch: (p: Partial<Settings>) => void };
@@ -13,7 +13,7 @@ export default function LibraryTab({ settings, patch }: Props) {
   const [msg, setMsg] = useState("");
 
   const addSong = () => {
-    const videoId = getVideoId(url.trim());
+    const videoId = extractYouTubeVideoId(url.trim());
     if (!videoId || !/^[\w-]{11}$/.test(videoId)) { setMsg("Enter a valid YouTube video URL"); return; }
     if (settings.songs.some((song) => song.videoId === videoId)) { setMsg("That song is already in your queue"); return; }
     const song: Song = { id: uid(), kind: "youtube", videoId, title: title.trim() || `Song ${settings.songs.length + 1}`, url: `https://www.youtube.com/watch?v=${videoId}` };
