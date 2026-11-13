@@ -3,7 +3,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { fetchRemote, pushRemote, sendHeartbeat } from "@/lib/sync";
 import {
   DEFAULT_DEVICE, DEFAULT_SETTINGS, DEVICE_KEY, PASSCODE_KEY, STORAGE_KEY, normalizeDevice, normalizeSettings,
-  type AgentStatus, type DeviceSettings, type Heartbeat, type Settings,
+  type DeviceSettings, type Heartbeat, type Settings,
 } from "@/lib/types";
 
 export type SyncState = "local" | "syncing" | "synced" | "badpass" | "unconfigured" | "error";
